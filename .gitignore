@@ -1,0 +1,27 @@
+node_modules/
+dist/
+.vite/
+
+# Environment — NEVER commit
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Google credentials
+service_account.json
+credentials.json
+token.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.log

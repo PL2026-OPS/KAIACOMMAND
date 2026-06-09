@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KAIA Portal · Colaboradores</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/css/main.css" />
+  <link rel="stylesheet" href="/src/css/portal.css" />
+</head>
+<body class="portal">
+
+  <!-- ── Welcome screen (6.5s) ── -->
+  <div class="welcome-screen" id="welcomeScreen">
+    <div class="orb orb--1"></div>
+    <div class="orb orb--2"></div>
+    <div class="orb orb--3"></div>
+    <div class="orb orb--4"></div>
+    <div class="watermark" aria-hidden="true">KAIA</div>
+
+    <header class="welcome-topbar">
+      <div class="logo-sicoben">
+        <span style="color:#E8357A">s</span><span style="color:#7B4CA8">i</span><span style="color:#3BB8E8">c</span><span style="color:#2ABDA8">o</span><span style="color:#F5A623">b</span><span style="color:#F06B35">e</span><span style="color:#8DC63F">n</span>
+      </div>
+      <span class="topbar-tag">Centro de Producción · 2025</span>
+    </header>
+
+    <div class="welcome-center">
+      <p class="welcome-label">Bienvenida al sistema</p>
+      <div class="welcome-divider-line"></div>
+      <p class="welcome-hola">Hola,</p>
+      <h1 class="welcome-name">Yonaida</h1>
+      <div class="rainbow-divider"></div>
+      <p class="welcome-subtitle">KAIA · COMMAND</p>
+      <p class="welcome-desc">Sistema de Control de Producción · Sicoben Ediciones</p>
+    </div>
+
+    <div class="welcome-progress">
+      <p class="welcome-status">Preparando tu vista <span class="dots"><span>.</span><span>.</span><span>.</span><span>.</span></span></p>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <p class="welcome-version">v1.0 · Production</p>
+    </div>
+  </div>
+
+  <!-- ── Portal app ── -->
+  <div class="portal-app" id="portalApp" hidden>
+
+    <header class="portal-topbar">
+      <div class="portal-topbar-left">
+        <div class="logo-sicoben sm">
+          <span style="color:#E8357A">s</span><span style="color:#7B4CA8">i</span><span style="color:#3BB8E8">c</span><span style="color:#2ABDA8">o</span><span style="color:#F5A623">b</span><span style="color:#F06B35">e</span><span style="color:#8DC63F">n</span>
+        </div>
+        <span class="portal-context-sep">·</span>
+        <span class="portal-context-text">KAIA / Producción</span>
+        <span class="live-badge sm"><span class="live-dot"></span> Datos en vivo</span>
+      </div>
+      <div class="portal-user-pill">
+        <span class="user-avatar sm">YA</span>
+        <span class="user-name-sm">Yonaida</span>
+      </div>
+    </header>
+
+    <div class="portal-hero">
+      <h2 class="portal-greeting">Buenos días, <strong>Yonaida</strong></h2>
+      <p class="portal-timestamp" id="portalTimestamp"></p>
+    </div>
+
+    <div class="stat-cards">
+      <div class="stat-card stat-card--blue">
+        <span class="stat-value" id="statActivas">—</span>
+        <span class="stat-label">Cargas activas</span>
+      </div>
+      <div class="stat-card stat-card--teal">
+        <span class="stat-value" id="statTransito">—</span>
+        <span class="stat-label">En tránsito</span>
+      </div>
+      <div class="stat-card stat-card--rosa">
+        <span class="stat-value" id="statProduccion">—</span>
+        <span class="stat-label">En producción</span>
+      </div>
+    </div>
+
+    <div class="portal-section">
+      <h3 class="portal-section-title">Tus cargas</h3>
+      <div class="loads-grid" id="portalGrid"></div>
+    </div>
+
+    <footer class="portal-footer">
+      <span class="logo-sicoben sm">
+        <span style="color:#E8357A">s</span><span style="color:#7B4CA8">i</span><span style="color:#3BB8E8">c</span><span style="color:#2ABDA8">o</span><span style="color:#F5A623">b</span><span style="color:#F06B35">e</span><span style="color:#8DC63F">n</span>
+      </span>
+      <span class="footer-text">KAIA Command · © 2025 Sicoben Ediciones</span>
+    </footer>
+  </div>
+
+  <script type="module" src="/src/js/portal.js"></script>
+</body>
+</html>

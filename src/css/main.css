@@ -1,0 +1,311 @@
+/* ═══════════════════════════════════════
+   KAIA Command Central — Global Styles
+   ═══════════════════════════════════════ */
+
+/* ── Design tokens ── */
+:root {
+  /* Stage colors */
+  --e1: #3BB8E8;
+  --e2: #7B4CA8;
+  --e3: #F5A623;
+  --e4: #E8357A;
+  --e5: #F06B35;
+  --e6: #8DC63F;
+  --e7: #2ABDA8;
+
+  /* Neutrals */
+  --bg-cream:   #FAF7F0;
+  --bg-card:    #FFFFFF;
+  --bg-sidebar: #13141A;
+  --border:     rgba(0, 0, 0, 0.06);
+
+  /* Dark (landing / welcome) */
+  --dark-900: #08090D;
+  --dark-800: #0E0F15;
+  --dark-700: #13141A;
+  --dark-600: #1A1F2E;
+
+  /* Typography */
+  --font-serif:  'Fraunces', Georgia, serif;
+  --font-sans:   'Inter', system-ui, sans-serif;
+  --font-mono:   'JetBrains Mono', 'Courier New', monospace;
+  --font-logo:   'Comfortaa', cursive;
+
+  /* Radius */
+  --radius-card:   14px;
+  --radius-btn:    8px;
+  --radius-chip:   6px;
+}
+
+/* ── Reset ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-font-smoothing: antialiased; }
+body { font-family: var(--font-sans); }
+
+/* ══════════════════════════════════════
+   LANDING PAGE
+   ══════════════════════════════════════ */
+
+body.landing {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(ellipse at 25% 15%, var(--dark-600) 0%, var(--dark-900) 65%);
+  color: rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Background orbs ── */
+.orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.15;
+  pointer-events: none;
+  animation: orb-float 14s ease-in-out infinite;
+}
+
+.orb--1 { width: 480px; height: 480px; background: var(--e1); top: -140px;  left: -120px;  animation-delay: 0s; }
+.orb--2 { width: 320px; height: 320px; background: var(--e4); top: 25%;     right: -80px;  animation-delay: -4s; }
+.orb--3 { width: 400px; height: 400px; background: var(--e2); bottom: -120px; left: 15%;   animation-delay: -8s; }
+.orb--4 { width: 280px; height: 280px; background: var(--e7); bottom: 15%;  right: 18%;    animation-delay: -11s; }
+
+@keyframes orb-float {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  35%       { transform: translateY(-28px) scale(1.04); }
+  70%       { transform: translateY(18px) scale(0.97); }
+}
+
+/* ── KAIA ghost watermark ── */
+.watermark {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif);
+  font-weight: 900;
+  font-size: clamp(180px, 28vw, 420px);
+  color: rgba(255, 255, 255, 0.022);
+  letter-spacing: -0.05em;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ── Top bar ── */
+.topbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px 40px;
+}
+
+.logo-sicoben {
+  font-family: var(--font-logo);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.01em;
+}
+
+.topbar-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  z-index: 10;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 24px 40px;
+}
+
+.hero-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+  margin-bottom: 20px;
+}
+
+.hero-title {
+  font-family: var(--font-serif);
+  font-weight: 900;
+  font-size: clamp(76px, 13vw, 148px);
+  line-height: 0.88;
+  letter-spacing: -0.035em;
+  background: linear-gradient(150deg, #ffffff 35%, rgba(255,255,255,0.55));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 28px;
+}
+
+/* Sicoben rainbow divider */
+.rainbow-divider {
+  width: 220px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    var(--e1) 15%,
+    var(--e2) 30%,
+    var(--e3) 45%,
+    var(--e4) 60%,
+    var(--e5) 72%,
+    var(--e6) 84%,
+    var(--e7) 92%,
+    transparent 100%
+  );
+  margin: 0 auto 28px;
+}
+
+.hero-subtitle {
+  font-size: 15px;
+  line-height: 1.75;
+  color: rgba(255, 255, 255, 0.42);
+  max-width: 360px;
+  margin-bottom: 32px;
+}
+
+.hero-subtitle strong {
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 500;
+}
+
+/* ── Stage dots ── */
+.stage-dots {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 40px;
+}
+
+.stage-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c);
+  opacity: 0.65;
+}
+
+/* ── Access buttons ── */
+.access-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-access {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 16px 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-btn);
+  text-decoration: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background 0.2s, border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  min-width: 200px;
+}
+
+.btn-access:hover {
+  background: rgba(255, 255, 255, 0.11);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+.btn-access:active { transform: translateY(0); }
+
+.btn-access-label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.btn-access-sub {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-access--admin { border-left: 3px solid var(--e1); }
+.btn-access--portal { border-left: 3px solid var(--e7); }
+
+/* ── Access note ── */
+.access-note {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.28);
+  line-height: 1.9;
+  text-align: center;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/* ── Pipeline footer ── */
+.landing-footer {
+  position: relative;
+  z-index: 10;
+  padding: 18px 32px 24px;
+  display: flex;
+  justify-content: center;
+}
+
+.pipeline-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.pipeline-stage {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.07em;
+  color: var(--c);
+  opacity: 0.45;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.pipeline-sep {
+  color: rgba(255, 255, 255, 0.12);
+  font-size: 10px;
+}
+
+/* ══════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════ */
+
+@media (max-width: 600px) {
+  .topbar { padding: 20px 20px; }
+  .topbar-tag { display: none; }
+  .hero-subtitle br { display: none; }
+  .pipeline-bar { display: none; }
+  .watermark { font-size: 42vw; }
+}

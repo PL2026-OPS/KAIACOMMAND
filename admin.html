@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KAIA Admin · Centro de Operaciones</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@700&family=Fraunces:ital,opsz,wght@0,9..144,700;0,9..144,900;1,9..144,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/css/main.css" />
+  <link rel="stylesheet" href="/src/css/admin.css" />
+</head>
+<body class="admin">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-sicoben">
+        <span style="color:#E8357A">s</span><span style="color:#7B4CA8">i</span><span style="color:#3BB8E8">c</span><span style="color:#2ABDA8">o</span><span style="color:#F5A623">b</span><span style="color:#F06B35">e</span><span style="color:#8DC63F">n</span>
+      </div>
+      <span class="sidebar-context">KAIA / Centro de control</span>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-avatar">PL</div>
+      <div class="user-info">
+        <span class="user-name">Paulet L.</span>
+        <span class="user-role">Administradora</span>
+      </div>
+      <span class="badge-admin">Admin</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a class="nav-item active" data-panel="cargas"     href="#"><span class="nav-icon">◆</span> Cargas</a>
+      <a class="nav-item"        data-panel="detalle"    href="#"><span class="nav-icon">◆</span> Detalle</a>
+
+      <div class="nav-section-label">Comunicación</div>
+      <a class="nav-item" data-panel="masivo"     href="#"><span class="nav-icon">◆</span> Masivo</a>
+      <a class="nav-item" data-panel="plantillas" href="#"><span class="nav-icon">◆</span> Plantillas</a>
+      <a class="nav-item" data-panel="correos"    href="#"><span class="nav-icon">◆</span> Correos</a>
+      <a class="nav-item" data-panel="cpsia"      href="#"><span class="nav-icon">◆</span> CPSIA</a>
+
+      <div class="nav-section-label">Operación</div>
+      <a class="nav-item" data-panel="alertas"  href="#"><span class="nav-icon">◆</span> Alertas</a>
+      <a class="nav-item" data-panel="monday"   href="#"><span class="nav-icon">◆</span> Monday sync</a>
+
+      <div class="nav-section-label">Sistema</div>
+      <a class="nav-item" data-panel="agentes" href="#"><span class="nav-icon">◆</span> Agentes IA</a>
+      <a class="nav-item" data-panel="config"  href="#"><span class="nav-icon">◆</span> Configuración</a>
+    </nav>
+
+    <div class="sidebar-footer">KAIA v1.0 · 2025</div>
+  </aside>
+
+  <!-- ── Main content ── -->
+  <main class="admin-main">
+
+    <!-- Panel 1: Cargas — rendered by admin.js -->
+    <section class="panel" id="panel-cargas"></section>
+
+    <!-- Panel 2: Detalle -->
+    <section class="panel" id="panel-detalle">
+      <div class="panel-header"><h2 class="panel-title">Detalle de carga</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 1 · F-06</p>
+        <p class="placeholder-sub">Vista individual por carga: línea de tiempo de eventos, correos recibidos/enviados, updates en Monday, estado de cada etapa E1–E7.</p>
+      </div>
+    </section>
+
+    <!-- Panel 3: Masivo -->
+    <section class="panel" id="panel-masivo">
+      <div class="panel-header"><h2 class="panel-title">Notificación Masiva</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 6 · F-12</p>
+        <p class="placeholder-sub">Banner automático cuando una carga entra a E5 o E7. Lista de destinatarios con checkboxes. Paneles de WhatsApp + correo editables antes del envío.</p>
+      </div>
+    </section>
+
+    <!-- Panel 4: Plantillas -->
+    <section class="panel" id="panel-plantillas">
+      <div class="panel-header"><h2 class="panel-title">Plantillas</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 5 · F-08</p>
+        <p class="placeholder-sub">Editor visual con chips de variables clicables ({{proveedor}}, {{eta}}, {{ccs}}…). Selector de trigger por etapa. Importación desde .docx. Preview en vivo.</p>
+      </div>
+    </section>
+
+    <!-- Panel 5: Correos -->
+    <section class="panel" id="panel-correos">
+      <div class="panel-header"><h2 class="panel-title">Correos</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 3 · F-02 + F-05</p>
+        <p class="placeholder-sub">Correos de proveedores agrupados por CCS. Sugerencia del clasificador IA con nivel de confianza. Botón de confirmación para publicar en Monday. Panel de respuesta al proveedor.</p>
+      </div>
+    </section>
+
+    <!-- Panel 6: CPSIA -->
+    <section class="panel" id="panel-cpsia">
+      <div class="panel-header"><h2 class="panel-title">CPSIA</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 7 · F-09</p>
+        <p class="placeholder-sub">Análisis automático de productos de la proforma contra reglas CPSIA. Crea pestaña "CPSIA Filtro" en el Google Sheet original. Notificación a Yonaida. Reglas configurables desde aquí.</p>
+      </div>
+    </section>
+
+    <!-- Panel 7: Alertas -->
+    <section class="panel" id="panel-alertas">
+      <div class="panel-header"><h2 class="panel-title">Alertas</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 5 · F-04 + F-07</p>
+        <p class="placeholder-sub">Centro de alertas activas: carencias por etapa, proveedores sin respuesta, inactividad en Tráfico. Historial de alertas enviadas por WhatsApp y email.</p>
+      </div>
+    </section>
+
+    <!-- Panel 8: Monday sync -->
+    <section class="panel" id="panel-monday">
+      <div class="panel-header"><h2 class="panel-title">Monday sync</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 1</p>
+        <p class="placeholder-sub">Estado en vivo de los 7 tableros de Monday.com. Última sincronización, cargas detectadas por board. Detección automática de tableros nuevos con botón "Activar".</p>
+      </div>
+    </section>
+
+    <!-- Panel 9: Agentes IA -->
+    <section class="panel" id="panel-agentes">
+      <div class="panel-header"><h2 class="panel-title">Agentes IA</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Fase 2</p>
+        <p class="placeholder-sub">Gestión de agentes conversacionales: agente WhatsApp de Paulet y agente del portal de colaboradores. Configuración de prompts y reglas de respuesta.</p>
+      </div>
+    </section>
+
+    <!-- Panel 10: Configuración -->
+    <section class="panel" id="panel-config">
+      <div class="panel-header"><h2 class="panel-title">Configuración</h2></div>
+      <div class="panel-placeholder">
+        <p class="placeholder-label">Semana 2</p>
+        <p class="placeholder-sub">Gestión de usuarios y roles. Visibilidad por campo en el portal (proveedor, BL, contenedor, costos). Reglas CPSIA editables. Lista de destinatarios masivos.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script type="module" src="/src/js/admin.js"></script>
+</body>
+</html>
