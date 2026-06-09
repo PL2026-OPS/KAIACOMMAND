@@ -122,8 +122,21 @@ SUPABASE_URL=
 SUPABASE_SERVICE_KEY=
 ```
 
+## Branch Convention
+
+This project has **exactly two branches**. Never create others unless the user explicitly asks for a feature branch.
+
+| Branch | Purpose | Alias words the user may use |
+|--------|---------|------------------------------|
+| `main` | Production — what users see online | "producción", "prod", "main", "online", "la web", "publicar", "subir a producción", "lo que los usuarios van a ver" |
+| `staging` | Development — where changes are tested before publishing | "desarrollo", "development", "dev", "staging", "ambiente de prueba", "entorno de pruebas" |
+
+**Default rules:**
+- All commits go to `staging`.
+- Only merge `staging → main` when a change is ready to publish to production.
+- If the user explicitly asks for a feature branch, create it from `staging` (not from `main`).
+
 ## Workflow
 
-- Branch prefixes: `feature/`, `fix/`, `chore/` — e.g., `feature/f02-email-classifier`
 - Before committing backend changes: run `ruff check` and `pytest -x`
 - Monday.com integration has no sandbox — test against real boards carefully and prefer read operations during development
