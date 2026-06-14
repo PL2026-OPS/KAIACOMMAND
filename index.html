@@ -37,11 +37,6 @@
     <!-- Rainbow divider -->
     <div class="rainbow-divider" aria-hidden="true"></div>
 
-    <p class="hero-subtitle">
-      El sistema nervioso central de la operación de<br>
-      <strong>Sicoben Ediciones / KADI International</strong>
-    </p>
-
     <!-- 7-stage dots -->
     <div class="stage-dots" aria-label="7 etapas de producción">
       <span class="stage-dot" style="--c:#3BB8E8" title="E1 Origen"></span>
@@ -53,20 +48,53 @@
       <span class="stage-dot" style="--c:#2ABDA8" title="E7 Tráfico"></span>
     </div>
 
-    <!-- Access buttons -->
-    <div class="access-buttons">
-      <a class="btn-access btn-access--admin" href="/admin.html">
-        <span class="btn-access-label">Centro de Operaciones</span>
-        <span class="btn-access-sub">Paulet · Sr. Daniel · Jenny</span>
-      </a>
-      <a class="btn-access btn-access--portal" href="/portal.html">
-        <span class="btn-access-label">Portal Colaboradores</span>
-        <span class="btn-access-sub">Yonaida · Ruth · María · Aixa · Orlando</span>
-      </a>
+    <!-- Vista: Iniciar sesión -->
+    <div id="login-view">
+      <form class="login-card" id="login-form" novalidate>
+        <p class="login-card-title">Iniciar sesión</p>
+        <p class="login-card-sub">Acceso exclusivo · Sicoben Ediciones</p>
+
+        <div class="login-field">
+          <label class="login-label" for="login-username">Correo electrónico</label>
+          <input class="login-input" type="text" id="login-username" name="username"
+                 placeholder="correo@sicobenediciones.com" autocomplete="username" />
+        </div>
+
+        <div class="login-field">
+          <label class="login-label" for="login-password">Contraseña</label>
+          <input class="login-input" type="password" id="login-password" name="password"
+                 placeholder="••••••••" autocomplete="current-password" />
+        </div>
+
+        <button class="login-btn" type="submit">Iniciar sesión</button>
+
+        <p class="login-error" id="login-error" role="alert"></p>
+        <a class="login-forgot" href="#" id="forgot-link">¿Olvidaste tu contraseña?</a>
+      </form>
+    </div>
+
+    <!-- Vista: Olvidé mi contraseña -->
+    <div id="forgot-view" hidden>
+      <div class="login-card">
+        <p class="login-card-title">Restablecer contraseña</p>
+        <p class="login-card-sub">Ingresa tu correo y te enviamos un link</p>
+
+        <form id="forgot-form" novalidate>
+          <div class="login-field">
+            <label class="login-label" for="forgot-email">Correo electrónico</label>
+            <input class="login-input" type="email" id="forgot-email"
+                   placeholder="correo@sicobenediciones.com" autocomplete="email" />
+          </div>
+          <button class="login-btn" type="submit">Enviar link de acceso</button>
+        </form>
+
+        <div id="forgot-result" hidden></div>
+
+        <a class="login-forgot" href="#" id="back-to-login">← Volver al inicio de sesión</a>
+      </div>
     </div>
 
     <p class="access-note">
-      Acceso exclusivo para el equipo de Sicoben.<br>
       <span class="mono">kaia.sicoben.com · v1.0</span>
     </p>
   </main>
@@ -91,5 +119,6 @@
   </footer>
 
   <script type="module" src="/src/js/main.js"></script>
+  <script type="module" src="/src/js/cookies.js"></script>
 </body>
 </html>

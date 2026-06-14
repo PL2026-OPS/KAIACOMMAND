@@ -11,6 +11,7 @@ export default defineConfig({
         privacidad: resolve(__dirname, 'privacidad.html'),
         terminos:   resolve(__dirname, 'terminos.html'),
         avisoLegal: resolve(__dirname, 'aviso-legal.html'),
+        cookies:    resolve(__dirname, 'cookies.html'),
       },
     },
   },

@@ -764,6 +764,223 @@ body.legal {
 }
 
 /* ══════════════════════════════════════
+   COOKIE CONSENT BANNER
+   ══════════════════════════════════════ */
+
+.cookie-root {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2000;
+  display: none;
+  justify-content: center;
+  padding: 18px;
+  pointer-events: none;
+}
+
+.cookie-root--visible { display: flex; }
+
+.cookie-banner {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 720px;
+  background: rgba(20, 22, 30, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  padding: 22px 24px 20px;
+  color: rgba(255, 255, 255, 0.9);
+  animation: cookie-rise 0.35s ease;
+}
+
+@keyframes cookie-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.cookie-rainbow {
+  width: 56px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg,
+    var(--e1), var(--e2), var(--e3), var(--e4), var(--e5), var(--e6), var(--e7));
+  margin-bottom: 14px;
+}
+
+.cookie-title {
+  font-family: var(--font-serif);
+  font-weight: 700;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 6px;
+}
+
+.cookie-text {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 4px;
+}
+
+.cookie-text a {
+  color: var(--e7);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.cookie-text a:hover { color: var(--e1); }
+
+/* ── Preferences ── */
+.cookie-prefs {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cookie-prefs[hidden] { display: none; }
+
+.cookie-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-btn);
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.cookie-option--locked { cursor: default; opacity: 0.75; }
+
+.cookie-option-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+
+.cookie-option-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cookie-option-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+/* Toggle switch — the native checkbox is visually hidden, .cookie-switch shows state */
+.cookie-option input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cookie-switch {
+  flex-shrink: 0;
+  width: 40px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  position: relative;
+  transition: background 0.2s;
+}
+
+.cookie-switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.cookie-option input:checked ~ .cookie-switch {
+  background: linear-gradient(135deg, var(--e1), var(--e7));
+}
+
+.cookie-option input:checked ~ .cookie-switch::after {
+  transform: translateX(18px);
+}
+
+.cookie-option input:disabled ~ .cookie-switch {
+  background: linear-gradient(135deg, rgba(59,184,232,0.5), rgba(42,189,168,0.5));
+}
+
+.cookie-option input:focus-visible ~ .cookie-switch {
+  outline: 2px solid rgba(255, 255, 255, 0.5);
+  outline-offset: 2px;
+}
+
+/* ── Actions ── */
+.cookie-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.cookie-btn {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-btn);
+  padding: 11px 18px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: opacity 0.2s, transform 0.15s, background 0.2s, border-color 0.2s;
+}
+
+.cookie-btn:hover { transform: translateY(-1px); }
+.cookie-btn:active { transform: translateY(0); }
+
+/* Accept + Reject are equally prominent (GDPR): same size & weight */
+.cookie-btn--primary {
+  background: linear-gradient(135deg, var(--e1) 0%, var(--e7) 100%);
+  color: #fff;
+  margin-left: auto;
+}
+.cookie-btn--primary:hover { opacity: 0.9; }
+
+.cookie-btn--secondary {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.9);
+}
+.cookie-btn--secondary:hover { background: rgba(255, 255, 255, 0.16); }
+
+.cookie-btn--ghost {
+  background: none;
+  color: rgba(255, 255, 255, 0.5);
+  padding-left: 4px;
+  padding-right: 4px;
+}
+.cookie-btn--ghost:hover { color: rgba(255, 255, 255, 0.85); }
+
+.cookie-btn[hidden] { display: none; }
+
+/* "Configurar cookies" trigger used on the /cookies page */
+.cookie-config-btn {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--e1) 0%, var(--e7) 100%);
+  border: none;
+  border-radius: var(--radius-btn);
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+.cookie-config-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+/* ══════════════════════════════════════
    RESPONSIVE
    ══════════════════════════════════════ */
 
@@ -776,4 +993,10 @@ body.legal {
 
   .legal-sheet { padding: 32px 22px 28px; }
   .legal-table th, .legal-table td { padding: 8px 8px; }
+
+  .cookie-root { padding: 12px; }
+  .cookie-banner { padding: 20px 18px 18px; }
+  .cookie-actions { gap: 8px; }
+  .cookie-btn { flex: 1 1 auto; text-align: center; }
+  .cookie-btn--primary { margin-left: 0; }
 }
