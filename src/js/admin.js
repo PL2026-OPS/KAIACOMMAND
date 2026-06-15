@@ -2153,6 +2153,131 @@ function renderCpsiaDetail(container) {
   })
 }
 
+function renderCpsiaAnalyzer(container) {
+  container.innerHTML = `
+    <div class="cpsia-analyzer-card">
+      <div class="cpsia-analyzer-header">
+        <span class="cpsia-analyzer-icon">📊</span>
+        <div>
+          <p class="cpsia-analyzer-title">Analizar Google Sheet de Proforma</p>
+          <p class="cpsia-analyzer-hint">Comparte el sheet como "Cualquiera con el enlace puede ver" y pega la URL aquí</p>
+        </div>
+      </div>
+      <div class="cpsia-analyzer-input-row">
+        <input class="cpsia-sheet-input" id="cpsiaSheetUrl" type="url"
+          placeholder="https://docs.google.com/spreadsheets/d/..." />
+        <button class="btn-cpsia-analyze" id="btnAnalyzeSheet">🔍 Analizar</button>
+      </div>
+      <div id="cpsiaAnalyzeResult"></div>
+    </div>
+  `
+
+  document.getElementById('btnAnalyzeSheet').addEventListener('click', async () => {
+    const url = document.getElementById('cpsiaSheetUrl').value.trim()
+    const resultEl = document.getElementById('cpsiaAnalyzeResult')
+    const btn = document.getElementById('btnAnalyzeSheet')
+
+    if (!url) { resultEl.innerHTML = `<p class="cpsia-analyzer-error">Pega una URL de Google Sheets.</p>`; return }
+
+    btn.textContent = '⏳ Analizando...'
+    btn.disabled = true
+    resultEl.innerHTML = ''
+
+    try {
+      const apiUrl = `/api/analyze-cpsia?url=${encodeURIComponent(url)}`
+      const res = await fetch(apiUrl)
+      const data = await res.json()
+
+      if (!res.ok) {
+        resultEl.innerHTML = `<p class="cpsia-analyzer-error">❌ ${data.error}</p>`
+        btn.textContent = '🔍 Analizar'; btn.disabled = false
+        return
+      }
+
+      const flagged = data.products.filter(p => p.aplica)
+      const exentos = data.products.filter(p => p.exento)
+      const flaggedList = flagged.map(p => `• ${p.producto} → ${p.test}`).join('\n')
+
+      resultEl.innerHTML = `
+        <div class="cpsia-result-summary">
+          <span class="cpsia-result-stat cpsia-result-stat--total">${data.total} productos analizados</span>
+          <span class="cpsia-result-stat cpsia-result-stat--alert">⚠️ ${flagged.length} requieren prueba</span>
+          <span class="cpsia-result-stat cpsia-result-stat--ok">✓ ${exentos.length} exentos</span>
+        </div>
+
+        <div class="cpsia-table-wrap" style="margin-top:16px">
+          <table class="cpsia-table">
+            <thead>
+              <tr>
+                <th class="cpsia-th cpsia-th--num">#</th>
+                <th class="cpsia-th">Producto</th>
+                <th class="cpsia-th">Formato</th>
+                <th class="cpsia-th">Materiales</th>
+                <th class="cpsia-th">CPSIA</th>
+                <th class="cpsia-th">Test requerido</th>
+                <th class="cpsia-th cpsia-th--num">Qty</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.products.map(p => `
+                <tr class="cpsia-tr ${p.aplica ? 'cpsia-tr--flagged' : p.exento ? 'cpsia-tr--exento' : ''}">
+                  <td class="cpsia-td cpsia-td--num">${p.num}</td>
+                  <td class="cpsia-td">
+                    <span class="cpsia-prod-nombre">${_esc(p.producto)}</span>
+                    <span class="cpsia-prod-codigo">${_esc(p.codigo)}</span>
+                  </td>
+                  <td class="cpsia-td"><span class="cpsia-formato-chip">${_esc(p.formato)}</span></td>
+                  <td class="cpsia-td cpsia-td--materials">${_esc(p.materiales)}</td>
+                  <td class="cpsia-td">
+                    <span class="cpsia-aplica-badge cpsia-aplica-badge--${p.aplica ? 'si' : 'no'}">
+                      ${p.aplica ? 'Sí' : p.exento ? 'Exento' : '—'}
+                    </span>
+                  </td>
+                  <td class="cpsia-td">
+                    <span class="cpsia-test-chip cpsia-test-chip--${p.aplica ? 'alert' : 'exempt'}">
+                      ${_esc(p.test)}
+                    </span>
+                  </td>
+                  <td class="cpsia-td cpsia-td--num">${p.qty ? p.qty.toLocaleString() : '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        ${flagged.length ? `
+          <div class="cpsia-yonaida-box">
+            <div class="cpsia-yonaida-preview">
+              <p class="cpsia-yonaida-preview-title">📱 Mensaje para Yonaida</p>
+              <pre class="cpsia-yonaida-text">🚨 *CPSIA detectado*
+Se analizó la proforma y ${flagged.length} producto${flagged.length > 1 ? 's' : ''} requiere${flagged.length > 1 ? 'n' : ''} prueba:
+
+${flaggedList}
+
+Por favor coordina la documentación con el proveedor.</pre>
+            </div>
+            <button class="btn-cpsia-yonaida" id="btnEnviarYonaida">
+              💬 Enviar a Yonaida por WhatsApp
+            </button>
+          </div>
+        ` : `<p style="color:var(--e6);font-weight:600;margin-top:16px">✅ Ningún producto requiere prueba CPSIA.</p>`}
+      `
+
+      document.getElementById('btnEnviarYonaida')?.addEventListener('click', (e) => {
+        const btn = e.currentTarget
+        btn.textContent = '✅ Mensaje preparado — pendiente Wassenger'
+        btn.style.background = 'var(--e6)'
+        btn.disabled = true
+      })
+
+    } catch (err) {
+      resultEl.innerHTML = `<p class="cpsia-analyzer-error">❌ Error de conexión: ${_esc(err.message)}</p>`
+    }
+
+    btn.textContent = '🔍 Analizar'; btn.disabled = false
+  })
+}
+
 function renderCpsiaPanel() {
   const panel = document.getElementById('panel-cpsia')
   panel.innerHTML = `
@@ -2160,7 +2285,8 @@ function renderCpsiaPanel() {
       <h2 class="panel-title">CPSIA</h2>
       <p class="panel-subtitle">Detección automática de productos que requieren prueba de seguridad infantil</p>
     </div>
-    <div class="correos-layout">
+    <div id="cpsiaAnalyzerMount"></div>
+    <div class="correos-layout" style="margin-top:16px">
       <aside class="plist-sidebar">
         <p class="plist-count">${MOCK_CPSIA_LOADS.length} cargas analizadas</p>
         <div class="clist-items" id="cpsiaList"></div>
@@ -2168,6 +2294,8 @@ function renderCpsiaPanel() {
       <div class="correos-thread" id="cpsiaDetail"></div>
     </div>
   `
+
+  renderCpsiaAnalyzer(document.getElementById('cpsiaAnalyzerMount'))
 
   const listEl   = document.getElementById('cpsiaList')
   const detailEl = document.getElementById('cpsiaDetail')

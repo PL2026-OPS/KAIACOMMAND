@@ -2474,6 +2474,77 @@ mark.tpl-var-resolved {
   gap: 16px;
 }
 
+/* ── CPSIA Analyzer (Google Sheet input) ── */
+.cpsia-analyzer-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 20px 24px;
+}
+.cpsia-analyzer-header {
+  display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px;
+}
+.cpsia-analyzer-icon { font-size: 28px; flex-shrink: 0; }
+.cpsia-analyzer-title { font-weight: 700; font-size: 15px; color: #1a1a1a; margin: 0 0 4px; }
+.cpsia-analyzer-hint  { font-size: 12px; color: rgba(0,0,0,0.5); margin: 0; }
+.cpsia-analyzer-input-row {
+  display: flex; gap: 10px;
+}
+.cpsia-sheet-input {
+  flex: 1; padding: 10px 14px;
+  border: 1px solid rgba(0,0,0,0.15); border-radius: var(--radius-btn);
+  font-family: var(--font-mono); font-size: 12px; color: #1a1a1a;
+  background: var(--bg-cream);
+  outline: none; transition: border-color 0.15s;
+}
+.cpsia-sheet-input:focus { border-color: var(--e3); }
+.btn-cpsia-analyze {
+  padding: 10px 20px; background: var(--e3); color: #fff;
+  border: none; border-radius: var(--radius-btn);
+  font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+}
+.btn-cpsia-analyze:hover    { opacity: 0.88; }
+.btn-cpsia-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+.cpsia-analyzer-error { color: var(--e4); font-size: 13px; margin-top: 12px; }
+
+.cpsia-result-summary {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px;
+}
+.cpsia-result-stat {
+  padding: 6px 14px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+}
+.cpsia-result-stat--total { background: rgba(0,0,0,0.06); color: #333; }
+.cpsia-result-stat--alert { background: rgba(245,166,35,0.15); color: var(--e3); }
+.cpsia-result-stat--ok    { background: rgba(141,198,63,0.15); color: var(--e6); }
+
+.cpsia-tr--exento { opacity: 0.6; }
+
+.cpsia-yonaida-box {
+  margin-top: 20px; padding: 20px;
+  background: rgba(42,189,168,0.06);
+  border: 1px solid rgba(42,189,168,0.2);
+  border-radius: var(--radius-card);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.cpsia-yonaida-preview-title { font-weight: 700; font-size: 13px; color: #1a1a1a; margin: 0 0 8px; }
+.cpsia-yonaida-text {
+  font-family: var(--font-mono); font-size: 12px; color: rgba(0,0,0,0.7);
+  white-space: pre-wrap; margin: 0;
+  background: var(--bg-cream); padding: 12px; border-radius: 8px;
+  line-height: 1.6;
+}
+.btn-cpsia-yonaida {
+  align-self: flex-start;
+  padding: 11px 22px; background: var(--e7); color: #fff;
+  border: none; border-radius: var(--radius-btn);
+  font-family: var(--font-sans); font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-cpsia-yonaida:hover    { opacity: 0.88; }
+.btn-cpsia-yonaida:disabled { background: var(--e6); opacity: 1; cursor: default; }
+
 .cpsia-trigger-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
