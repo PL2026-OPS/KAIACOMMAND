@@ -4,10 +4,10 @@
 // ── Reglas CPSIA (aplica a productos para niños menores de 12 años) ──────────
 // Fuente: CPSIA 2008, ASTM F963, 16 CFR 1501, 1303, 1500.18
 const CPSIA_RULES = [
-  // 1. KIT / Set con múltiples materiales
+  // 1. KIT / Pack / Set con múltiples materiales
   {
     id: 'kit',
-    check: (row) => /\bkit\b|set\b|conjunto|pack\b|bundle/i.test(row),
+    check: (row) => /\bkit\b|\bset\b|conjunto|\bpack\b|bundle|juego|game|puzzle|rompecabezas|memory|memo|matching/i.test(row),
     test: 'Plomo · Ftalatos · ASTM F963 (juguetes)',
     articulo: 'CPSIA §101, §108 · ASTM F963',
     prioridad: 'alta',
@@ -163,13 +163,13 @@ function parseCSV(text) {
     return -1
   }
 
-  const colProducto   = findCol('PRODUCT', 'TITULO', 'TITLE', 'NOMBRE', 'NAME', 'ITEM', 'DESCRIPCION')
-  const colCodigo     = findCol('CODE', 'CODIGO', 'CÓDIGO', 'SKU', 'REF', 'PART')
-  const colFormato    = findCol('FORMAT', 'FORMATO', 'GROUP', 'GRUPO', 'TYPE', 'TIPO', 'CATEGORY', 'CATEGOR')
-  const colMateriales = findCol('MATERIAL', 'SPEC', 'CONTENT', 'CONTENIDO', 'COMPOSI')
-  const colDescripcion = findCol('DESCRIPCION', 'DESCRIPTION', 'DETAIL', 'DETALLE', 'NOTES', 'NOTA')
-  const colQty        = findCol('QTY', 'QUANTITY', 'CANTIDAD', 'UNITS', 'UNIDADES', 'PCS', 'PIEZAS')
-  const colImg        = findCol('IMAGE', 'IMAGEN', 'IMG', 'PHOTO', 'FOTO', 'PIC')
+  const colProducto    = findCol('ITEM NAME', 'PRODUCT', 'TITULO', 'TITLE', 'NOMBRE', 'NAME', 'ITEM', 'DESCRIPCION')
+  const colCodigo      = findCol('INTERNAL CODE', 'CODE', 'CODIGO', 'CÓDIGO', 'SKU', 'REF', 'PART', 'BARCODE')
+  const colFormato     = findCol('FORMAT', 'FORMATO', 'GROUP', 'GRUPO', 'TYPE', 'TIPO', 'CATEGORY', 'CATEGOR')
+  const colMateriales  = findCol('MATERIAL', 'SPEC', 'CONTENT', 'CONTENIDO', 'COMPOSI')
+  const colDescripcion = findCol('DESCRIPTION', 'DESCRIPCION', 'DETAIL', 'DETALLE', 'NOTES', 'NOTA')
+  const colQty         = findCol('QTY TOTAL', 'QTY PER TITLE', 'QTY', 'QUANTITY', 'CANTIDAD', 'UNITS', 'UNIDADES', 'PCS')
+  const colImg         = findCol('IMAGE', 'IMAGEN', 'IMG', 'PHOTO', 'FOTO', 'PIC')
 
   const get = (row, idx) => idx >= 0 && row[idx] ? row[idx].replace(/"/g,'').trim() : ''
 
@@ -213,8 +213,8 @@ export default async function handler(req, res) {
 
   const sheetId = match[1]
 
-  // Intentar con la pestaña por defecto (gid=0)
-  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=0`
+  // Exportar primera pestaña (sin gid para máxima compatibilidad)
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`
 
   let csvText
   try {
