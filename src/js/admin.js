@@ -1,6 +1,18 @@
 /* ═══════════════════════════════════════
    KAIA Admin — mock data + render logic
    ═══════════════════════════════════════ */
+import { initPasswordModal } from '/src/js/auth.js'
+import { supabase } from '/src/js/supabase.js'
+initPasswordModal()
+
+// Populate sidebar with session user
+const _u = JSON.parse(sessionStorage.getItem('kaia_user') || '{}')
+if (_u.name) {
+  const avatarEl = document.getElementById('sidebarAvatar')
+  const nameEl   = document.getElementById('sidebarName')
+  if (avatarEl) avatarEl.textContent = _u.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  if (nameEl)   nameEl.textContent   = _u.name
+}
 
 const ETAPAS = [
   { id: 'E1', nombre: 'Origen',        color: '#3BB8E8' },
@@ -12,7 +24,7 @@ const ETAPAS = [
   { id: 'E7', nombre: 'Tráfico',       color: '#2ABDA8' },
 ]
 
-const MOCK_CARGAS = [
+let MOCK_CARGAS = [
   {
     ccs: '2025C-FCL',
     nombre: 'Colección Navidad 2025',
@@ -60,7 +72,7 @@ const MOCK_CAMPOS = {
   '2025B-LCL': { 0: true, 1: true, 2: [true, false, true, false] },
 }
 
-const MOCK_HISTORIAL = {
+let MOCK_HISTORIAL = {
   '2025C-FCL': [
     {
       tipo: 'alerta',
@@ -559,6 +571,14 @@ const MASIVO_TRIGGER = {
   hace:      '2 días',
 }
 
+// Masivo: solo WhatsApp (el correo 1-a-1 vive en la pestaña Correos)
+let masivoCanal = 'wa'
+let masivoContainer = null
+
+function masivoIncluye(canal) {
+  return masivoCanal === 'ambos' || masivoCanal === canal
+}
+
 function getCheckedDests() {
   return DESTINATARIOS.filter(d =>
     document.getElementById(`dest-${d.id}`)?.checked
@@ -566,14 +586,14 @@ function getCheckedDests() {
 }
 
 function calcResumen(dests) {
-  const wa    = dests.filter(d => d.canales.includes('wa')).length
-  const email = dests.filter(d => d.canales.includes('email')).length
+  const wa    = masivoIncluye('wa')    ? dests.filter(d => d.canales.includes('wa')).length    : 0
+  const email = masivoIncluye('email') ? dests.filter(d => d.canales.includes('email')).length : 0
   const total = dests.length
   if (!total) return 'Ningún destinatario seleccionado'
   const parts = []
   if (wa)    parts.push(`${wa} WhatsApp`)
   if (email) parts.push(`${email} correo${email > 1 ? 's' : ''}`)
-  return `${total} destinatario${total > 1 ? 's' : ''} · ${parts.join(' + ')}`
+  return `${total} destinatario${total > 1 ? 's' : ''} · ${parts.join(' + ') || 'sin canal disponible'}`
 }
 
 function bindMasivoInteractions() {
@@ -585,8 +605,16 @@ function bindMasivoInteractions() {
   const sentState   = document.getElementById('sentState')
   const sendBar     = document.getElementById('sendBar')
 
+  // Canal segmented (Correo / WhatsApp / Ambos)
+  document.querySelectorAll('.canal-seg-btn').forEach(btn =>
+    btn.addEventListener('click', () => {
+      masivoCanal = btn.dataset.canal
+      renderMasivoInto(masivoContainer)
+    })
+  )
+
   // Char counter
-  waEditor.addEventListener('input', () => {
+  if (waEditor) waEditor.addEventListener('input', () => {
     const len = waEditor.value.length
     waCounter.textContent = `${len}/400`
     waCounter.classList.toggle('char-counter--warn', len > 360)
@@ -632,8 +660,8 @@ function bindMasivoInteractions() {
         <span class="sent-log-nombre">${d.nombre}</span>
         <span class="sent-log-rol">${d.rol}</span>
         <div class="sent-log-canales">
-          ${d.canales.includes('wa')    ? `<span class="sent-log-badge sent-log-wa">📱 Enviado</span>` : ''}
-          ${d.canales.includes('email') ? `<span class="sent-log-badge sent-log-email">📧 Enviado</span>` : ''}
+          ${masivoIncluye('wa')    && d.canales.includes('wa')    ? `<span class="sent-log-badge sent-log-wa">📱 Enviado</span>` : ''}
+          ${masivoIncluye('email') && d.canales.includes('email') ? `<span class="sent-log-badge sent-log-email">📧 Enviado</span>` : ''}
         </div>
       </div>
     `).join('')
@@ -644,24 +672,25 @@ function bindMasivoInteractions() {
 
   // Reset
   document.getElementById('btnNueva').addEventListener('click', () => {
-    renderMasivoPanel()
+    renderMasivoInto(masivoContainer)
   })
 }
 
-function renderMasivoPanel() {
-  const panel = document.getElementById('panel-masivo')
-  if (!panel) return
+function renderMasivoInto(container) {
+  if (!container) return
+  masivoContainer = container
 
   const etapa    = ETAPAS[MASIVO_TRIGGER.etapa_idx]
   const waText   = `📦 Nueva carga en ${etapa.nombre}\n\n*${MASIVO_TRIGGER.nombre}* (${MASIVO_TRIGGER.ccs}) avanzó a ${etapa.id} ${etapa.nombre}.\nETA estimada: ${MASIVO_TRIGGER.eta}.\n\nConsulta el detalle en el portal:\n→ kaia.sicoben.com/portal`
   const subjText = `📦 Cargas en proceso de fabricación — Semana del 8 dic 2025`
   const bodyText = `Hola equipo de Ventas,\n\nATENCIÓN: Las siguientes cargas están en proceso de fabricación esta semana.\n\n• ${MASIVO_TRIGGER.ccs} — ${MASIVO_TRIGGER.nombre} (${etapa.id} ${etapa.nombre} · ETA ${MASIVO_TRIGGER.eta})\n• 2025C-FCL — Colección Navidad 2025 (E6 Fabricación · ETA 15 Feb 2026)\n\nPara conocer el detalle de cada carga, ingresen al portal:\n→ kaia.sicoben.com/portal\n\nCualquier duda sobre algún título específico me avisan.\n\nSaludos,\nPaulet`
 
-  panel.innerHTML = `
-    <div class="panel-header">
-      <h2 class="panel-title">Notificación Masiva</h2>
-    </div>
+  // Destinatarios visibles según el canal elegido
+  const destVisibles = DESTINATARIOS.filter(d =>
+    masivoCanal === 'ambos' ? true : d.canales.includes(masivoCanal)
+  )
 
+  container.innerHTML = `
     <!-- Trigger banner -->
     <div class="trigger-banner" style="--tc:${etapa.color}">
       <div class="trigger-left">
@@ -679,9 +708,9 @@ function renderMasivoPanel() {
 
     <!-- Destinatarios -->
     <div class="masivo-card">
-      <p class="masivo-card-label">Destinatarios</p>
+      <p class="masivo-card-label">Destinatarios · con WhatsApp</p>
       <div class="recipients-list">
-        ${DESTINATARIOS.map(d => `
+        ${destVisibles.map(d => `
           <label class="recipient-row" for="dest-${d.id}">
             <input class="recipient-check" type="checkbox" id="dest-${d.id}" data-id="${d.id}" checked />
             <span class="recipient-avatar">${d.nombre.charAt(0)}</span>
@@ -690,8 +719,8 @@ function renderMasivoPanel() {
               <span class="recipient-rol">${d.rol}</span>
             </div>
             <div class="recipient-canales">
-              ${d.canales.includes('wa')    ? `<span class="canal-badge canal-wa">📱 WA</span>` : ''}
-              ${d.canales.includes('email') ? `<span class="canal-badge canal-email">📧 Email</span>` : ''}
+              ${masivoIncluye('wa')    && d.canales.includes('wa')    ? `<span class="canal-badge canal-wa">📱 WA</span>` : ''}
+              ${masivoIncluye('email') && d.canales.includes('email') ? `<span class="canal-badge canal-email">📧 Email</span>` : ''}
             </div>
           </label>
         `).join('')}
@@ -701,6 +730,7 @@ function renderMasivoPanel() {
     <!-- Editors -->
     <div class="editors-row">
 
+      ${masivoIncluye('wa') ? `
       <div class="editor-panel editor-panel--wa">
         <div class="editor-header">
           <span class="editor-icon">📱</span>
@@ -713,22 +743,7 @@ function renderMasivoPanel() {
         <div class="editor-footer">
           <span class="char-counter" id="waCounter">${waText.length}/400</span>
         </div>
-      </div>
-
-      <div class="editor-panel editor-panel--email">
-        <div class="editor-header">
-          <span class="editor-icon">📧</span>
-          <div>
-            <p class="editor-title">Correo electrónico</p>
-            <p class="editor-hint">Sale desde Gmail de Paulet</p>
-          </div>
-        </div>
-        <div class="email-subject-row">
-          <span class="subject-label">Asunto</span>
-          <input class="subject-input" id="emailSubject" type="text" value="${subjText}" />
-        </div>
-        <textarea class="editor-textarea editor-textarea--tall" id="emailEditor" rows="11">${bodyText}</textarea>
-      </div>
+      </div>` : ''}
 
     </div>
 
@@ -770,7 +785,7 @@ function renderMasivoPanel() {
    PLANTILLAS PANEL (Panel 4 — F-08)
    ═══════════════════════════════ */
 
-const MOCK_PLANTILLAS = [
+let MOCK_PLANTILLAS = [
   {
     id: 'e2-cotizacion',
     nombre: 'Solicitud de Cotización',
@@ -892,9 +907,9 @@ function renderTplEditor(container) {
   container.innerHTML = `
     <div class="tpl-editor">
       <div class="tpl-editor-topbar">
-        <div>
+        <div class="tpl-editing-name-wrap">
           <span class="tpl-editing-label">Editando plantilla</span>
-          <h2 class="tpl-editing-name">${t.nombre}</h2>
+          <input class="tpl-editing-name-input" id="tplName" value="${t.nombre.replace(/"/g, '&quot;')}" placeholder="Nombre de la plantilla" />
         </div>
         <label class="tpl-active-toggle" title="Activar / desactivar">
           <input type="checkbox" ${t.activa ? 'checked' : ''} />
@@ -918,9 +933,10 @@ function renderTplEditor(container) {
         </div>
         <div class="tpl-meta-cell">
           <span class="tpl-field-label">Canal</span>
-          <span class="tpl-canal-badge tpl-canal-badge--${t.canal}">
-            ${t.canal === 'wa' ? '💬 WhatsApp' : '✉️ Email'}
-          </span>
+          <div class="tpl-canal-switch">
+            <button class="tpl-canal-opt ${t.canal === 'email' ? 'tpl-canal-opt--active' : ''}" data-canal="email">✉️ Email</button>
+            <button class="tpl-canal-opt ${t.canal === 'wa' ? 'tpl-canal-opt--active' : ''}" data-canal="wa">💬 WhatsApp</button>
+          </div>
         </div>
       </div>
 
@@ -971,7 +987,27 @@ function renderTplEditor(container) {
     })
   })
 
+  // Canal switch (Email / WhatsApp)
+  container.querySelectorAll('.tpl-canal-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      t.canal = opt.dataset.canal
+      t.cuerpo = bodyTA.value   // keep current body text
+      renderTplEditor(container)
+    })
+  })
+
   document.getElementById('btnTplSave').addEventListener('click', () => {
+    // Persist edits back to the template object
+    t.nombre = (document.getElementById('tplName').value.trim()) || 'Sin título'
+    t.cuerpo = bodyTA.value
+    const subjEl = document.getElementById('tplSubject')
+    if (subjEl) t.asunto = subjEl.value
+    t.activa = container.querySelector('.tpl-active-toggle input').checked
+
+    // Refresh the template grid if we're inside the Comunicación panel
+    const grid = document.getElementById('commTplGrid')
+    if (grid) renderTplGrid(grid)
+
     const btn = document.getElementById('btnTplSave')
     btn.textContent = '✓ Guardado'
     btn.classList.add('btn-tpl-save--done')
@@ -1023,6 +1059,325 @@ function renderPlantillasPanel() {
 }
 
 /* ═══════════════════════════════
+   COMUNICACIÓN PANEL (Correos + Plantillas, F-02/F-05/F-08)
+   ═══════════════════════════════ */
+
+let customTplCount = 0
+
+function createBlankTemplate() {
+  customTplCount++
+  const tpl = {
+    id: 'custom-' + customTplCount,
+    nombre: 'Nueva plantilla',
+    etapa_idx: null,
+    trigger: 'Manual desde la tarjeta',
+    destino: 'Proveedor',
+    canal: 'email',
+    activa: true,
+    asunto: '',
+    cuerpo: '',
+  }
+  MOCK_PLANTILLAS.push(tpl)
+  return tpl
+}
+
+function renderTplGrid(container) {
+  container.innerHTML = MOCK_PLANTILLAS.map(t => {
+    const etapa = t.etapa_idx !== null ? ETAPAS[t.etapa_idx] : null
+    return `
+      <div class="comm-tpl-card ${t.id === currentTplId ? 'comm-tpl-card--active' : ''} ${t.activa ? '' : 'comm-tpl-card--off'}"
+           data-tpl-id="${t.id}" role="button" tabindex="0">
+        <div class="comm-tpl-card-top">
+          <span class="comm-tpl-canal">${t.canal === 'wa' ? '💬' : '✉️'}</span>
+          <span class="plist-stage-chip" style="--c:${etapa ? etapa.color : '#888'}">${etapa ? etapa.id : '∀'}</span>
+          ${t.activa ? '' : '<span class="comm-tpl-off-tag">Inactiva</span>'}
+        </div>
+        <span class="comm-tpl-nombre">${t.nombre}</span>
+        <span class="comm-tpl-dest">→ ${t.destino}</span>
+      </div>
+    `
+  }).join('')
+}
+
+// Pestaña activa dentro del panel Comunicación
+let commTab = 'conversaciones'
+
+function renderComunicacionPanel() {
+  const panel = document.getElementById('panel-comunicacion')
+  if (!panel) return
+
+  const tabs = [
+    { id: 'conversaciones', icon: '✉️', label: 'Correos' },
+    { id: 'masivo',         icon: '💬', label: 'WhatsApp' },
+    { id: 'plantillas',     icon: '📝', label: 'Plantillas' },
+  ]
+
+  panel.innerHTML = `
+    <div class="panel-hdr">
+      <h2 class="panel-title">Comunicación</h2>
+      <p class="panel-subtitle">Conversaciones por carga · envíos masivos · plantillas</p>
+    </div>
+
+    <div class="comm-tabs">
+      ${tabs.map(t => `
+        <button class="comm-tab ${commTab === t.id ? 'comm-tab--active' : ''}" data-comm-tab="${t.id}">
+          <span>${t.icon}</span> ${t.label}
+        </button>`).join('')}
+    </div>
+
+    <div class="comm-tab-body" id="commTabBody"></div>
+  `
+
+  panel.querySelectorAll('.comm-tab').forEach(btn =>
+    btn.addEventListener('click', () => {
+      commTab = btn.dataset.commTab
+      renderComunicacionPanel()
+    })
+  )
+
+  const body = document.getElementById('commTabBody')
+  if (commTab === 'conversaciones') renderCommConversaciones(body)
+  if (commTab === 'masivo')         renderCommWhatsapp(body)
+  if (commTab === 'plantillas')     renderCommPlantillas(body)
+}
+
+/* TAB 1 — Conversaciones (hilos por carga, intacto) */
+function renderCommConversaciones(body) {
+  body.innerHTML = `
+    <div class="correos-layout">
+      <aside class="plist-sidebar">
+        <p class="plist-count">${MOCK_CORREOS.length} hilos activos</p>
+        <div class="clist-items" id="clistItems"></div>
+      </aside>
+      <div class="correos-thread" id="correosThread"></div>
+    </div>
+  `
+  const clistItems = document.getElementById('clistItems')
+  const threadDiv  = document.getElementById('correosThread')
+  renderClist(clistItems)
+  renderThread(threadDiv)
+  clistItems.addEventListener('click', e => {
+    const item = e.target.closest('[data-ccs]')
+    if (!item) return
+    currentCcs = item.dataset.ccs
+    renderClist(clistItems)
+    renderThread(threadDiv)
+  })
+}
+
+/* TAB 2 — WhatsApp (chats del equipo, identificados por carga) */
+const MOCK_WA_CHATS = [
+  {
+    id: 'wa1', contacto: 'Yonaida', rol: 'Tráfico / Logística', telefono: '+507 6111-2233',
+    ccs: '2025C-FCL', nombre_carga: 'Colección Navidad 2025', confianza: 96, unread: 2,
+    mensajes: [
+      { de: 'out', tag: '🔔 Alerta KAIA', hora: 'ayer 9:00',
+        texto: '📦 Tráfico: carga 2025C-FCL lleva 6 días sin actualizar en Monday. Última actualización: 2 jun.' },
+      { de: 'in', hora: 'ayer 9:14',
+        texto: 'Hola Paulet! Ya hablé con el forwarder, el booking está confirmado para el 18 de junio 🚢' },
+      { de: 'in', hora: 'hoy 8:45',
+        texto: 'Te paso el BL apenas me lo manden, hoy en la tarde a más tardar 🙏' },
+    ],
+  },
+  {
+    id: 'wa2', contacto: 'Aixa', rol: 'Ventas', telefono: '+507 6222-4455',
+    ccs: '2025E-FCL', nombre_carga: 'Serie Animales del Mundo', confianza: 91, unread: 1,
+    mensajes: [
+      { de: 'out', tag: '📢 Masivo', hora: 'lun 10:02',
+        texto: '📦 Nueva carga en Comercial\n\n*Serie Animales del Mundo* (2025E-FCL) avanzó a E5 Comercial.\nETA estimada: Feb 2026.\n\nConsulta el detalle en el portal:\n→ kaia.sicoben.com/portal' },
+      { de: 'in', hora: 'lun 10:30',
+        texto: 'Gracias Paulet! ¿Esta carga trae los títulos nuevos de dinosaurios? Tengo un cliente preguntando 🦕' },
+      { de: 'in', hora: 'hoy 9:12',
+        texto: '¿La ETA sigue firme para febrero?' },
+    ],
+  },
+  {
+    id: 'wa3', contacto: 'Sr. Daniel', rol: 'CEO', telefono: '+507 6300-7788',
+    ccs: '2025C-FCL', nombre_carga: 'Colección Navidad 2025', confianza: 88, unread: 1,
+    mensajes: [
+      { de: 'out', tag: '🔔 Alerta KAIA', hora: 'lun 7:00',
+        texto: 'Buenos días Sr. Daniel,\n\nResumen de cargas en tránsito esta semana:\n\n• 2025C-FCL — Colección Navidad 2025\nEstado: Fabricación 85%\nETA: 15 Feb 2026\n\n→ kaia.sicoben.com/admin' },
+      { de: 'in', hora: 'lun 7:35',
+        texto: 'Gracias. ¿Qué pasó con el BL de la carga de Navidad? Necesito ese dato para la reunión del jueves.' },
+    ],
+  },
+]
+
+let currentWaChat = MOCK_WA_CHATS[0].id
+let waView = 'chats'   // 'chats' | 'masivo'
+
+function waNow() {
+  const d = new Date()
+  return `hoy ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function renderCommWhatsapp(body) {
+  if (waView === 'masivo') {
+    body.innerHTML = `
+      <div class="comm-section-hdr">
+        <span class="comm-section-icon">📢</span>
+        <div class="comm-section-titles">
+          <h3 class="comm-section-title">Masivo por WhatsApp</h3>
+          <span class="comm-section-hint">Notificación al equipo · vía Wassenger</span>
+        </div>
+        <button class="btn-comm-new-tpl" id="btnWaBack">← Volver a chats</button>
+      </div>
+      <div id="waMasivoMount"></div>
+    `
+    document.getElementById('btnWaBack').addEventListener('click', () => {
+      waView = 'chats'
+      renderComunicacionPanel()
+    })
+    renderMasivoInto(document.getElementById('waMasivoMount'))
+    return
+  }
+
+  body.innerHTML = `
+    <div class="comm-section-hdr">
+      <span class="comm-section-icon">💬</span>
+      <div class="comm-section-titles">
+        <h3 class="comm-section-title">WhatsApp</h3>
+        <span class="comm-section-hint">Conversaciones del equipo · la IA identifica de qué carga te hablan</span>
+      </div>
+      <button class="btn-comm-new-tpl" id="btnWaMasivo">📢 Nuevo masivo</button>
+    </div>
+    <div class="wa-layout">
+      <aside class="plist-sidebar">
+        <p class="plist-count">${MOCK_WA_CHATS.length} chats</p>
+        <div class="clist-items" id="waChatList"></div>
+      </aside>
+      <div class="wa-thread" id="waThread"></div>
+    </div>
+  `
+
+  document.getElementById('btnWaMasivo').addEventListener('click', () => {
+    waView = 'masivo'
+    renderComunicacionPanel()
+  })
+
+  const listEl   = document.getElementById('waChatList')
+  const threadEl = document.getElementById('waThread')
+  renderWaChatList(listEl)
+  renderWaThread(threadEl)
+
+  listEl.addEventListener('click', e => {
+    const item = e.target.closest('[data-wa-id]')
+    if (!item) return
+    currentWaChat = item.dataset.waId
+    const chat = MOCK_WA_CHATS.find(c => c.id === currentWaChat)
+    if (chat) chat.unread = 0
+    renderWaChatList(listEl)
+    renderWaThread(threadEl)
+  })
+}
+
+function renderWaChatList(container) {
+  container.innerHTML = MOCK_WA_CHATS.map(c => {
+    const ultimo = c.mensajes[c.mensajes.length - 1]
+    return `
+      <div class="clist-item ${c.id === currentWaChat ? 'clist-item--active' : ''}"
+           data-wa-id="${c.id}" role="button" tabindex="0">
+        <div class="clist-top">
+          <span class="wa-list-contact">${c.contacto}</span>
+          ${c.unread ? `<span class="clist-badge-pendiente">${c.unread}</span>` : ''}
+        </div>
+        <span class="ccs-code">${c.ccs}</span>
+        <span class="clist-preview">${ultimo.texto.split('\n')[0]}</span>
+      </div>
+    `
+  }).join('')
+}
+
+function renderWaThread(container) {
+  const chat = MOCK_WA_CHATS.find(c => c.id === currentWaChat)
+  if (!chat) return
+
+  container.innerHTML = `
+    <div class="wa-thread-header">
+      <span class="wa-avatar">${chat.contacto.charAt(0)}</span>
+      <div class="wa-thread-info">
+        <span class="wa-contact-name">${chat.contacto}</span>
+        <span class="wa-contact-meta">${chat.rol} · ${chat.telefono}</span>
+      </div>
+      <div class="wa-ia-tag" title="La IA detectó de qué carga trata esta conversación">
+        🤖 Hablando de <span class="ccs-code">${chat.ccs}</span> — ${chat.nombre_carga} · ${chat.confianza}%
+      </div>
+    </div>
+    <div class="wa-msgs" id="waMsgs">
+      ${chat.mensajes.map(m => `
+        <div class="wa-bubble-row wa-bubble-row--${m.de}">
+          <div class="wa-bubble wa-bubble--${m.de}">
+            ${m.tag ? `<span class="wa-msg-tag">${m.tag}</span>` : ''}
+            <p class="wa-msg-text">${m.texto.replace(/\n/g, '<br>')}</p>
+            <span class="wa-msg-hora">${m.hora}${m.de === 'out' ? ' ✓✓' : ''}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="wa-composer">
+      <input class="wa-input" id="waInput" type="text" placeholder="Escribe un mensaje..." />
+      <button class="wa-send-btn" id="waSendBtn" title="Enviar">➤</button>
+    </div>
+  `
+
+  const msgsEl = document.getElementById('waMsgs')
+  msgsEl.scrollTop = msgsEl.scrollHeight
+
+  const input = document.getElementById('waInput')
+  function sendWa() {
+    const texto = input.value.trim()
+    if (!texto) return
+    chat.mensajes.push({ de: 'out', texto, hora: waNow() })
+    renderWaChatList(document.getElementById('waChatList'))
+    renderWaThread(container)
+    document.getElementById('waInput').focus()
+  }
+  document.getElementById('waSendBtn').addEventListener('click', sendWa)
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') sendWa() })
+}
+
+/* TAB 3 — Plantillas (grid + crear + editor, intacto) */
+function renderCommPlantillas(body) {
+  body.innerHTML = `
+    <div class="comm-section-hdr">
+      <span class="comm-section-icon">📝</span>
+      <div class="comm-section-titles">
+        <h3 class="comm-section-title">Plantillas</h3>
+        <span class="comm-section-hint">Correos y mensajes con variables dinámicas · clic para editar · disponibles con "/" en las respuestas</span>
+      </div>
+      <button class="btn-comm-new-tpl" id="btnNewTpl">+ Crear plantilla</button>
+    </div>
+    <div class="comm-tpl-grid" id="commTplGrid"></div>
+    <div class="comm-tpl-editor-wrap" id="commTplEditor" hidden></div>
+  `
+
+  const grid     = document.getElementById('commTplGrid')
+  const editorEl = document.getElementById('commTplEditor')
+  renderTplGrid(grid)
+
+  function openEditor() {
+    renderTplGrid(grid)
+    editorEl.hidden = false
+    renderTplEditor(editorEl)
+    editorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
+
+  grid.addEventListener('click', e => {
+    const card = e.target.closest('[data-tpl-id]')
+    if (!card) return
+    currentTplId = card.dataset.tplId
+    openEditor()
+  })
+
+  document.getElementById('btnNewTpl').addEventListener('click', () => {
+    const tpl = createBlankTemplate()
+    currentTplId = tpl.id
+    openEditor()
+    const nameInput = document.getElementById('tplName')
+    if (nameInput) { nameInput.focus(); nameInput.select() }
+  })
+}
+
+/* ═══════════════════════════════
    PANEL REGISTRY — lazy render
    ═══════════════════════════════ */
 
@@ -1030,28 +1385,36 @@ function renderPlantillasPanel() {
    CORREOS PANEL (Panel 5 — F-02/F-05)
    ═══════════════════════════════ */
 
-const MOCK_CORREOS = [
+let MOCK_CORREOS = [
   {
     ccs: '2025C-FCL',
     nombre: 'Colección Navidad 2025',
     etapa_idx: 5,
     mensajes: [
       {
-        id: 'c1a',
-        de: 'Johnson Li', email: 'johnson@ninjobumbo.com',
-        asunto: 'RE: Production Update — Christmas Collection',
-        fecha: '8 Jun 2026, 9:14',
-        resumen: 'Confirma producción al 85%. Adjunta reporte QC y fotos del lote 2.',
-        adjuntos: ['QC_Report_Jun8.pdf', 'photos_batch2.zip'],
-        tipo: 'recibido', confianza: 94, confirmado: false,
-      },
-      {
         id: 'c1b',
         de: 'Paulet Bermúdez', email: 'paulet@sicoben.com',
         asunto: 'Production Update — Christmas Collection',
         fecha: '7 Jun 2026, 15:22',
+        cuerpo: `Hello Johnson,\n\nCould you please send me an update on the production status of the Christmas Collection?\n\nWe'd also appreciate some photos of the current batch and the latest QC report.\n\nThank you,\nPaulet`,
         resumen: null, adjuntos: [],
         tipo: 'enviado', confianza: null, confirmado: true,
+      },
+      {
+        id: 'c1a',
+        de: 'Johnson Li', email: 'johnson@ninjobumbo.com',
+        asunto: 'RE: Production Update — Christmas Collection',
+        fecha: '8 Jun 2026, 9:14',
+        cuerpo: `Hi Paulet,\n\nGood news — production is now at 85% completion. We expect to finish the full batch by June 20th.\n\nI'm attaching the latest QC report and photos of batch #2 for your review. The color quality on the hardcover titles looks great.\n\nPlease confirm if everything looks good on your side.\n\nBest regards,\nJohnson Li\nNingbo Jumbo Co. Ltd.`,
+        resumen: 'Confirma producción al 85%. Adjunta reporte QC y fotos del lote 2.',
+        adjuntos: [
+          { name: 'cover_sample.jpg', type: 'image', url: 'https://picsum.photos/seed/kaiacover/520/380' },
+          { name: 'batch2_photo.jpg', type: 'image', url: 'https://picsum.photos/seed/kaiabatch/520/380' },
+          { name: 'voice_note.mp3',   type: 'audio', url: 'https://samplelib.com/lib/preview/mp3/sample-6s.mp3' },
+          { name: 'line_check.mp4',   type: 'video', url: 'https://samplelib.com/lib/preview/mp4/sample-5s.mp4' },
+          { name: 'QC_Report_Jun8.pdf', type: 'file' },
+        ],
+        tipo: 'recibido', confianza: 94, confirmado: false,
       },
     ],
   },
@@ -1065,6 +1428,7 @@ const MOCK_CORREOS = [
         de: 'Priya Sharma', email: 'priya@mumbaibookprint.in',
         asunto: 'Proforma Invoice — Educational Books Q1',
         fecha: '7 Jun 2026, 11:40',
+        cuerpo: `Dear Paulet,\n\nPlease find attached the proforma invoice for the Educational Books Q1 order.\n\nSummary:\n• 18 titles\n• Total amount: USD 42,300\n• 30% advance to confirm the order\n• Production start: July 20th\n\nKindly review and confirm so we can block the production slot.\n\nWarm regards,\nPriya Sharma\nMumbai Book Printers Pvt.`,
         resumen: 'Proforma por $42,300 USD. 18 títulos, inicio de producción 20 Jul.',
         adjuntos: ['Proforma_MBP_2025B.pdf'],
         tipo: 'recibido', confianza: 88, confirmado: false,
@@ -1079,7 +1443,7 @@ let currentCcs = MOCK_CORREOS[0].ccs
 function renderClist(container) {
   container.innerHTML = MOCK_CORREOS.map(t => {
     const pendientes = t.mensajes.filter(m => m.tipo === 'recibido' && !m.confirmado && !confirmedMsgs.has(m.id)).length
-    const ultimo = t.mensajes[0]
+    const ultimo = t.mensajes[t.mensajes.length - 1]
     return `
       <div class="clist-item ${t.ccs === currentCcs ? 'clist-item--active' : ''}"
            data-ccs="${t.ccs}" role="button" tabindex="0">
@@ -1094,6 +1458,73 @@ function renderClist(container) {
   }).join('')
 }
 
+/* ── Adjuntos enriquecidos (imagen / audio / video / archivo) ── */
+function attType(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase()
+  if (['jpg','jpeg','png','gif','webp','bmp','svg'].includes(ext)) return 'image'
+  if (['mp3','wav','ogg','m4a','aac'].includes(ext))               return 'audio'
+  if (['mp4','webm','mov','avi','mkv'].includes(ext))              return 'video'
+  return 'file'
+}
+
+function renderAdjunto(a) {
+  const name = typeof a === 'string' ? a : a.name
+  const url  = typeof a === 'object' ? (a.url || '') : ''
+  const type = (typeof a === 'object' && a.type) ? a.type : attType(name)
+
+  if (type === 'image' && url) {
+    return `
+      <a class="msg-media msg-media--img" href="${url}" data-lightbox="${url}" title="${name}">
+        <img src="${url}" alt="${name}" loading="lazy" />
+        <span class="msg-media-cap">🖼 ${name}</span>
+      </a>`
+  }
+  if (type === 'audio' && url) {
+    return `
+      <div class="msg-media msg-media--audio">
+        <span class="msg-media-cap">🎵 ${name}</span>
+        <audio controls preload="none" src="${url}"></audio>
+      </div>`
+  }
+  if (type === 'video' && url) {
+    return `
+      <div class="msg-media msg-media--video">
+        <video controls preload="none" src="${url}"></video>
+        <span class="msg-media-cap">🎬 ${name}</span>
+      </div>`
+  }
+  return `<span class="msg-adjunto-chip">📎 ${name}</span>`
+}
+
+function openLightbox(url) {
+  let ov = document.getElementById('kaiaLightbox')
+  if (!ov) {
+    ov = document.createElement('div')
+    ov.id = 'kaiaLightbox'
+    ov.className = 'lightbox-overlay'
+    ov.innerHTML = `<button class="lightbox-close" aria-label="Cerrar">×</button><img class="lightbox-img" alt="" />`
+    document.body.appendChild(ov)
+    ov.addEventListener('click', () => { ov.hidden = true })
+  }
+  ov.querySelector('.lightbox-img').src = url
+  ov.hidden = false
+}
+
+/* ── Rellena las variables de una plantilla con los datos de la carga ── */
+function resolveTemplate(text, ccs) {
+  const c = MOCK_CARGAS.find(x => x.ccs === ccs) || {}
+  const map = {
+    '{{nombre_carga}}': c.nombre,
+    '{{ccs}}':          c.ccs || ccs,
+    '{{proveedor}}':    c.proveedor,
+    '{{eta}}':          c.eta,
+    '{{origen}}':       c.origen,
+  }
+  let r = text
+  Object.entries(map).forEach(([k, v]) => { if (v) r = r.replaceAll(k, v) })
+  return r
+}
+
 function renderThread(container) {
   const thread = MOCK_CORREOS.find(t => t.ccs === currentCcs)
   if (!thread) return
@@ -1102,39 +1533,55 @@ function renderThread(container) {
   const msgsHtml = thread.mensajes.map(m => {
     const isConfirmed = m.confirmado || confirmedMsgs.has(m.id)
     const pendiente   = m.tipo === 'recibido' && !isConfirmed
+    const enviado     = m.tipo === 'enviado'
+    const iniciales   = m.de.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
-    const iaBar = m.confianza !== null ? (() => {
-      const color = m.confianza >= 90 ? 'var(--e6)' : 'var(--e3)'
-      return `
-        <div class="msg-ia-bar">
-          <div class="msg-ia-left">
-            <span class="msg-ia-badge" style="--bc:${color}">IA · ${m.confianza}% · ${m.confianza >= 90 ? 'Alta confianza' : 'Confianza media'}</span>
-            <span class="msg-ia-ccs">Clasificado como <strong>${thread.ccs}</strong></span>
-          </div>
-          ${pendiente
-            ? `<div class="msg-ia-actions">
-                 <button class="btn-ia-reasignar">Reasignar</button>
-                 <button class="btn-ia-confirmar" data-msg-id="${m.id}">Confirmar →</button>
-               </div>`
-            : `<span class="msg-ia-confirmed">✓ Confirmado · Publicado en Monday</span>`
-          }
-        </div>`
-    })() : ''
+    // Cuerpo real del correo (escapado)
+    const cuerpoHtml = (m.cuerpo || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>')
 
     const adjuntosHtml = m.adjuntos.length
-      ? `<div class="msg-adjuntos">${m.adjuntos.map(a => `<span class="msg-adjunto-chip">📎 ${a}</span>`).join('')}</div>`
+      ? `<div class="msg-adjuntos">${m.adjuntos.map(renderAdjunto).join('')}</div>`
       : ''
 
+    // IA + Responder: footer discreto, solo en correos recibidos
+    let iaHtml = ''
+    if (m.tipo === 'recibido') {
+      const replyBtn = `<button class="btn-msg-reply" data-reply-id="${m.id}">↩ Responder</button>`
+      if (pendiente) {
+        const color = m.confianza >= 90 ? 'var(--e6)' : 'var(--e3)'
+        iaHtml = `
+          <div class="msg-ia-foot">
+            <span class="msg-ia-chip" style="--bc:${color}">🤖 IA sugiere <strong>${thread.ccs}</strong> · ${m.confianza}%</span>
+            <div class="msg-ia-actions">
+              ${replyBtn}
+              <button class="btn-ia-confirmar" data-msg-id="${m.id}">📌 Publicar en Monday</button>
+            </div>
+          </div>`
+      } else {
+        iaHtml = `
+          <div class="msg-ia-foot">
+            <span class="msg-ia-confirmed">✓ Confirmado · publicado en Monday</span>
+            <div class="msg-ia-actions">${replyBtn}</div>
+          </div>`
+      }
+    }
+
     return `
-      <div class="msg-card msg-card--${m.tipo} ${pendiente ? 'msg-card--pendiente' : ''}">
-        <div class="msg-meta">
-          <span class="msg-de">${m.de} <span class="msg-email">&lt;${m.email}&gt;</span></span>
-          <span class="msg-fecha">${m.fecha}</span>
+      <div class="msg-row msg-row--${m.tipo} ${pendiente ? 'msg-row--pendiente' : ''}">
+        <div class="msg-avatar msg-avatar--${m.tipo}">${iniciales}</div>
+        <div class="msg-bubble">
+          <div class="msg-head">
+            <span class="msg-de">${m.de}</span>
+            ${enviado ? `<span class="msg-you-tag">Tú</span>` : `<span class="msg-email">${m.email}</span>`}
+            <span class="msg-fecha">${m.fecha}</span>
+          </div>
+          ${cuerpoHtml ? `<p class="msg-cuerpo">${cuerpoHtml}</p>` : ''}
+          ${adjuntosHtml}
+          ${iaHtml}
+          ${m.tipo === 'recibido' ? `<div class="msg-reply-slot" id="reply-slot-${m.id}"></div>` : ''}
         </div>
-        <span class="msg-asunto">${m.asunto}</span>
-        ${m.resumen ? `<p class="msg-resumen">📝 ${m.resumen}</p>` : ''}
-        ${iaBar}
-        ${adjuntosHtml}
       </div>`
   }).join('')
 
@@ -1147,19 +1594,6 @@ function renderThread(container) {
       <span class="plist-stage-chip" style="--c:${etapa.color}">${etapa.id} · ${etapa.nombre}</span>
     </div>
     <div id="threadMsgs">${msgsHtml}</div>
-    <div class="reply-area">
-      <button class="btn-reply-toggle" id="btnReplyToggle">✉️ Responder al proveedor</button>
-      <div class="reply-compose" id="replyCompose" hidden>
-        <textarea class="reply-textarea" id="replyTA" placeholder="Escribe tu respuesta aquí..."></textarea>
-        <div class="reply-send-bar">
-          <span class="reply-hint">Se enviará desde paulet@sicoben.com · Reintento automático en 48h</span>
-          <div style="display:flex;gap:8px">
-            <button class="btn-tpl-discard" id="btnReplyCancel">Cancelar</button>
-            <button class="btn-tpl-save"    id="btnReplySend">Enviar</button>
-          </div>
-        </div>
-      </div>
-    </div>
   `
 
   container.querySelectorAll('.btn-ia-confirmar').forEach(btn => {
@@ -1170,34 +1604,257 @@ function renderThread(container) {
     })
   })
 
-  const btnToggle = document.getElementById('btnReplyToggle')
-  const compose   = document.getElementById('replyCompose')
-
-  btnToggle.addEventListener('click', () => {
-    compose.hidden = !compose.hidden
-    btnToggle.textContent = compose.hidden ? '✉️ Responder al proveedor' : '✕ Cerrar'
-    if (!compose.hidden) document.getElementById('replyTA').focus()
+  // Abrir imágenes en lightbox
+  container.querySelectorAll('[data-lightbox]').forEach(a => {
+    a.addEventListener('click', e => { e.preventDefault(); openLightbox(a.dataset.lightbox) })
   })
 
-  document.getElementById('btnReplyCancel').addEventListener('click', () => {
-    compose.hidden = true
-    btnToggle.textContent = '✉️ Responder al proveedor'
+  // Responder por mensaje — la caja aparece bajo el correo del proveedor
+  container.querySelectorAll('.btn-msg-reply').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const slot = document.getElementById('reply-slot-' + btn.dataset.replyId)
+      if (!slot) return
+
+      // Cerrar cualquier otra respuesta abierta
+      container.querySelectorAll('.msg-reply-slot').forEach(s => { if (s !== slot) s.innerHTML = '' })
+      container.querySelectorAll('.btn-msg-reply').forEach(b => { if (b !== btn) b.textContent = '↩ Responder' })
+
+      // Toggle
+      if (slot.innerHTML.trim()) {
+        slot.innerHTML = ''
+        btn.textContent = '↩ Responder'
+        return
+      }
+
+      const msg = thread.mensajes.find(x => x.id === btn.dataset.replyId)
+      slot.innerHTML = composeHTML(msg)
+      btn.textContent = '✕ Cerrar'
+      const ta = slot.querySelector('.reply-textarea')
+      ta.focus()
+      wireCompose(slot, thread.ccs)
+
+      slot.querySelector('.btn-reply-cancel').addEventListener('click', () => {
+        slot.innerHTML = ''
+        btn.textContent = '↩ Responder'
+      })
+
+      slot.querySelector('.btn-reply-send').addEventListener('click', () => {
+        const sendBtn = slot.querySelector('.btn-reply-send')
+        const texto   = ta.value.trim()
+        if (!texto) return
+
+        const asunto   = slot.querySelector('.reply-subject-input')?.value || ''
+        const adjuntos = Array.from(slot.querySelectorAll('.reply-attach-chip'))
+          .map(c => c.textContent.replace('×', '').trim())
+
+        sendBtn.textContent = '✓ Enviado'
+        sendBtn.classList.add('btn-tpl-save--done')
+
+        setTimeout(() => {
+          // Agrega el correo enviado al final del hilo (orden cronológico)
+          thread.mensajes.push({
+            id: 'sent-' + thread.mensajes.length + '-' + texto.length,
+            de: 'Paulet Bermúdez', email: 'paulet@sicoben.com',
+            asunto,
+            fecha: nowStamp(),
+            cuerpo: texto,
+            resumen: null, adjuntos,
+            tipo: 'enviado', confianza: null, confirmado: true,
+          })
+          renderClist(document.getElementById('clistItems'))
+          renderThread(container)
+          // Scroll al final para ver el correo recién enviado
+          const wrap = container.closest('.correos-thread') || container
+          wrap.scrollTop = wrap.scrollHeight
+        }, 1200)
+      })
+    })
+  })
+}
+
+function nowStamp() {
+  const d = new Date()
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${d.getDate()} ${meses[d.getMonth()]} ${d.getFullYear()}, ${d.getHours()}:${mm}`
+}
+
+function composeHTML(msg) {
+  const to      = msg?.email || ''
+  const subject = msg ? 'RE: ' + msg.asunto.replace(/^RE:\s*/i, '') : ''
+  return `
+    <div class="reply-compose">
+      <div class="reply-fields">
+        <div class="reply-field-row">
+          <span class="reply-field-label">Para</span>
+          <input class="reply-field-input" type="text" value="${to}" />
+          <div class="reply-cc-toggles">
+            <button class="reply-cc-btn" data-cc="cc" type="button">CC</button>
+            <button class="reply-cc-btn" data-cc="cco" type="button">CCO</button>
+          </div>
+        </div>
+        <div class="reply-field-row reply-cc-field" data-cc-field="cc" hidden>
+          <span class="reply-field-label">CC</span>
+          <input class="reply-field-input" type="text" placeholder="correo@ejemplo.com" />
+        </div>
+        <div class="reply-field-row reply-cc-field" data-cc-field="cco" hidden>
+          <span class="reply-field-label">CCO</span>
+          <input class="reply-field-input" type="text" placeholder="correo@ejemplo.com" />
+        </div>
+        <div class="reply-field-row">
+          <span class="reply-field-label">Asunto</span>
+          <input class="reply-field-input reply-subject-input" type="text" value="${subject.replace(/"/g, '&quot;')}" />
+        </div>
+      </div>
+      <textarea class="reply-textarea" placeholder="Escribe tu respuesta… o escribe / para insertar una plantilla"></textarea>
+      <div class="reply-attach-list" hidden></div>
+      <input type="file" class="reply-file-input" multiple hidden />
+      <div class="reply-send-bar">
+        <div class="reply-toolbar">
+          <button class="btn-reply-attach" type="button">📎 Adjuntar</button>
+          <span class="reply-hint">Sale de paulet@sicoben.com · reintento en 48h</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-tpl-discard btn-reply-cancel" type="button">Cancelar</button>
+          <button class="btn-tpl-save btn-reply-send" type="button">Enviar</button>
+        </div>
+      </div>
+    </div>`
+}
+
+function wireCompose(slot, ccs) {
+  // CC / CCO toggles
+  slot.querySelectorAll('.reply-cc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const field = slot.querySelector(`.reply-cc-field[data-cc-field="${btn.dataset.cc}"]`)
+      const show = field.hidden
+      field.hidden = !show
+      btn.classList.toggle('reply-cc-btn--active', show)
+      if (show) field.querySelector('input').focus()
+    })
   })
 
-  document.getElementById('btnReplySend').addEventListener('click', () => {
-    const ta  = document.getElementById('replyTA')
-    const btn = document.getElementById('btnReplySend')
-    if (!ta.value.trim()) return
-    btn.textContent = '✓ Enviado'
-    btn.classList.add('btn-tpl-save--done')
-    setTimeout(() => {
-      compose.hidden = true
-      btnToggle.textContent = '✉️ Responder al proveedor'
-      btn.textContent = 'Enviar'
-      btn.classList.remove('btn-tpl-save--done')
-      ta.value = ''
-    }, 1500)
+  // Adjuntar archivos
+  const fileInput = slot.querySelector('.reply-file-input')
+  const attachList = slot.querySelector('.reply-attach-list')
+  slot.querySelector('.btn-reply-attach').addEventListener('click', () => fileInput.click())
+  fileInput.addEventListener('change', () => {
+    const files = Array.from(fileInput.files)
+    if (!files.length) return
+    attachList.hidden = false
+    attachList.innerHTML = files.map(f =>
+      `<span class="reply-attach-chip">📎 ${f.name} <button class="reply-attach-x" type="button">×</button></span>`
+    ).join('')
+    attachList.querySelectorAll('.reply-attach-x').forEach((x) => {
+      x.addEventListener('click', () => {
+        x.closest('.reply-attach-chip').remove()
+        if (!attachList.querySelector('.reply-attach-chip')) attachList.hidden = true
+      })
+    })
   })
+
+  // ── Comando "/" para insertar plantillas ──
+  wireSlashCommand(slot, ccs)
+}
+
+function wireSlashCommand(slot, ccs) {
+  const ta      = slot.querySelector('.reply-textarea')
+  const compose = slot.querySelector('.reply-compose')
+  compose.style.position = 'relative'
+
+  const menu = document.createElement('div')
+  menu.className = 'slash-menu'
+  menu.hidden = true
+  compose.appendChild(menu)
+
+  let activeIdx = 0
+
+  function getCtx() {
+    const pos = ta.selectionStart
+    const before = ta.value.slice(0, pos)
+    const slashIdx = before.lastIndexOf('/')
+    if (slashIdx === -1) return null
+    const charBefore = slashIdx === 0 ? '' : before[slashIdx - 1]
+    if (charBefore && !/\s/.test(charBefore)) return null   // solo al inicio o tras espacio
+    const query = before.slice(slashIdx + 1)
+    if (query.includes('\n')) return null
+    return { slashIdx, query }
+  }
+
+  function matches(query) {
+    const q = query.toLowerCase().trim()
+    return MOCK_PLANTILLAS.filter(t => !q || t.nombre.toLowerCase().includes(q))
+  }
+
+  function showMenu(query) {
+    const list = matches(query)
+    if (!list.length) { menu.hidden = true; return }
+    activeIdx = Math.min(activeIdx, list.length - 1)
+    menu.innerHTML = `
+      <div class="slash-menu-hint">Plantillas — datos de <strong>${(MOCK_CARGAS.find(c=>c.ccs===ccs)||{}).proveedor || ccs}</strong></div>
+      ${list.map((t, i) => {
+        const etapa = t.etapa_idx !== null ? ETAPAS[t.etapa_idx] : null
+        return `
+          <div class="slash-item ${i === activeIdx ? 'slash-item--active' : ''}" data-tpl-id="${t.id}">
+            <span class="slash-item-icon">${t.canal === 'wa' ? '💬' : '✉️'}</span>
+            <span class="slash-item-name">${t.nombre}</span>
+            <span class="slash-item-meta">${etapa ? etapa.id : '∀'} · ${t.destino}</span>
+          </div>`
+      }).join('')}
+    `
+    menu.querySelectorAll('.slash-item').forEach(item => {
+      item.addEventListener('mousedown', e => {
+        e.preventDefault()
+        pick(item.dataset.tplId)
+      })
+    })
+    // posición: bajo el inicio del textarea
+    menu.style.left = ta.offsetLeft + 'px'
+    menu.style.top  = (ta.offsetTop + 34) + 'px'
+    menu.hidden = false
+  }
+
+  function pick(tplId) {
+    const tpl = MOCK_PLANTILLAS.find(t => t.id === tplId)
+    const ctx = getCtx()
+    if (!tpl || !ctx) { menu.hidden = true; return }
+    const pos    = ta.selectionStart
+    const before = ta.value.slice(0, ctx.slashIdx)
+    const after  = ta.value.slice(pos)
+    const body   = resolveTemplate(tpl.cuerpo, ccs)
+    ta.value = before + body + after
+    const newPos = (before + body).length
+    ta.focus()
+    ta.setSelectionRange(newPos, newPos)
+    menu.hidden = true
+
+    // Si la plantilla trae asunto, lo pone en el campo Asunto
+    const subjInput = slot.querySelector('.reply-subject-input')
+    if (subjInput && tpl.asunto) subjInput.value = resolveTemplate(tpl.asunto, ccs)
+  }
+
+  ta.addEventListener('input', () => {
+    const ctx = getCtx()
+    if (!ctx) { menu.hidden = true; return }
+    activeIdx = 0
+    showMenu(ctx.query)
+  })
+
+  ta.addEventListener('keydown', e => {
+    if (menu.hidden) return
+    const items = [...menu.querySelectorAll('.slash-item')]
+    if (!items.length) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); activeIdx = (activeIdx + 1) % items.length; refreshActive(items) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); activeIdx = (activeIdx - 1 + items.length) % items.length; refreshActive(items) }
+    else if (e.key === 'Enter')  { e.preventDefault(); pick(items[activeIdx].dataset.tplId) }
+    else if (e.key === 'Escape') { e.preventDefault(); menu.hidden = true }
+  })
+
+  function refreshActive(items) {
+    items.forEach((it, i) => it.classList.toggle('slash-item--active', i === activeIdx))
+  }
+
+  ta.addEventListener('blur', () => setTimeout(() => { menu.hidden = true }, 150))
 }
 
 function renderCorreosPanel() {
@@ -1506,7 +2163,7 @@ function renderCpsiaPanel() {
    ALERTAS PANEL (Panel 7 — F-04/F-07)
    ═══════════════════════════════ */
 
-const MOCK_ALERTAS = [
+let MOCK_ALERTAS = [
   { id:'al1', semaforo:'rojo',     icon:'🚨', tipo:'Escalada',
     ccs:'2025C-FCL', nombre:'Colección Navidad 2025', hace:'hace 1h',
     msg:'Ningbo Jumbo no respondió tras 2 reintentos — acción manual requerida' },
@@ -2153,15 +2810,150 @@ function renderCfgDestinatarios() {
 }
 
 const PANEL_RENDERERS = {
-  masivo:     renderMasivoPanel,
-  plantillas: renderPlantillasPanel,
-  correos:    renderCorreosPanel,
-  cpsia:      renderCpsiaPanel,
-  alertas:    renderAlertasPanel,
-  monday:     renderMondayPanel,
-  agentes:    renderAgentesPanel,
-  config:     renderConfigPanel,
+  comunicacion: renderComunicacionPanel,
+  cpsia:        renderCpsiaPanel,
+  alertas:      renderAlertasPanel,
+  monday:       renderMondayPanel,
+  agentes:      renderAgentesPanel,
+  config:       renderConfigPanel,
 }
 
 /* ── Init ── */
 renderCargasPanel()
+
+/* ═══════════════════════════════════════════════════════════════
+   SUPABASE — carga datos reales y reemplaza los mocks
+   Si Supabase no está disponible, el sistema sigue funcionando
+   con los datos de demostración definidos arriba.
+   ═══════════════════════════════════════════════════════════════ */
+
+async function initFromSupabase() {
+  if (!supabase) return   // env vars no configuradas → mock data
+
+  try {
+    // ── Cargas ──────────────────────────────────────────────────
+    const { data: cargas, error: eCargas } = await supabase
+      .from('cargas')
+      .select('*')
+      .eq('activa', true)
+      .order('semaforo')        // rojo primero (r < v)
+      .order('dias_en_etapa', { ascending: false })
+
+    if (!eCargas && cargas?.length) {
+      MOCK_CARGAS.splice(0, MOCK_CARGAS.length, ...cargas)
+      renderCargasPanel()
+    }
+
+    // ── Historial de eventos ─────────────────────────────────────
+    const { data: eventos, error: eHistorial } = await supabase
+      .from('historial_eventos')
+      .select('*')
+      .order('fecha_evento', { ascending: false })
+
+    if (!eHistorial && eventos?.length) {
+      const histMap = {}
+      eventos.forEach(ev => {
+        if (!histMap[ev.ccs]) histMap[ev.ccs] = []
+        histMap[ev.ccs].push({
+          tipo:   ev.tipo,
+          fecha:  new Date(ev.fecha_evento).toLocaleString('es-PA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+          icono:  ev.icono,
+          texto:  ev.texto,
+          detalle: ev.detalle ?? undefined,
+          adjunto: ev.adjunto ?? undefined,
+        })
+      })
+      Object.assign(MOCK_HISTORIAL, histMap)
+    }
+
+    // ── Hilos de correo + mensajes ───────────────────────────────
+    const { data: hilos, error: eHilos } = await supabase
+      .from('correos_hilo')
+      .select(`
+        id,
+        ccs,
+        etapa_idx,
+        cargas ( nombre ),
+        mensajes_correo (
+          id, de_nombre, de_email, asunto, cuerpo, resumen,
+          tipo, confianza, confirmado, adjuntos, fecha_mensaje
+        )
+      `)
+      .order('creado_en', { ascending: false })
+
+    if (!eHilos && hilos?.length) {
+      const correos = hilos.map(h => ({
+        ccs:       h.ccs,
+        nombre:    h.cargas?.nombre ?? h.ccs,
+        etapa_idx: h.etapa_idx,
+        mensajes:  (h.mensajes_correo || [])
+          .sort((a, b) => new Date(a.fecha_mensaje) - new Date(b.fecha_mensaje))
+          .map(m => ({
+            id:         m.id,
+            de:         m.de_nombre,
+            email:      m.de_email,
+            asunto:     m.asunto,
+            fecha:      new Date(m.fecha_mensaje).toLocaleString('es-PA', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            cuerpo:     m.cuerpo ?? '',
+            resumen:    m.resumen ?? null,
+            adjuntos:   Array.isArray(m.adjuntos) ? m.adjuntos : [],
+            tipo:       m.tipo,
+            confianza:  m.confianza ?? null,
+            confirmado: m.confirmado,
+          })),
+      }))
+      MOCK_CORREOS.splice(0, MOCK_CORREOS.length, ...correos)
+    }
+
+    // ── Alertas ──────────────────────────────────────────────────
+    const { data: alertas, error: eAlertas } = await supabase
+      .from('alertas')
+      .select('*')
+      .eq('resuelta', false)
+      .order('creado_en', { ascending: false })
+
+    if (!eAlertas && alertas?.length) {
+      const mapped = alertas.map(a => ({
+        id:      a.id,
+        semaforo: a.semaforo,
+        icon:    a.icono,
+        tipo:    a.tipo,
+        ccs:     a.ccs,
+        nombre:  MOCK_CARGAS.find(c => c.ccs === a.ccs)?.nombre ?? a.ccs,
+        hace:    (() => {
+          const diff = Date.now() - new Date(a.creado_en)
+          const h = Math.floor(diff / 3600000)
+          return h < 1 ? 'hace menos de 1h' : `hace ${h}h`
+        })(),
+        msg:     a.mensaje,
+      }))
+      MOCK_ALERTAS.splice(0, MOCK_ALERTAS.length, ...mapped)
+    }
+
+    // ── Plantillas ───────────────────────────────────────────────
+    const { data: plantillas, error: ePlantillas } = await supabase
+      .from('plantillas')
+      .select('*')
+      .order('creado_en')
+
+    if (!ePlantillas && plantillas?.length) {
+      const mapped = plantillas.map(p => ({
+        id:         p.id,
+        nombre:     p.nombre,
+        etapa_idx:  p.etapa_idx,
+        trigger:    p.trigger_desc,
+        destino:    p.destino,
+        canal:      p.canal,
+        activa:     p.activa,
+        asunto:     p.asunto ?? '',
+        cuerpo:     p.cuerpo,
+      }))
+      MOCK_PLANTILLAS.splice(0, MOCK_PLANTILLAS.length, ...mapped)
+    }
+
+  } catch (err) {
+    console.warn('[KAIA] Supabase load failed — using mock data:', err.message)
+  }
+}
+
+initFromSupabase()

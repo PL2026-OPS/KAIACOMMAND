@@ -22,13 +22,14 @@
     </div>
 
     <div class="sidebar-user">
-      <div class="user-avatar">PL</div>
+      <div class="user-avatar" id="sidebarAvatar">PL</div>
       <div class="user-info">
-        <span class="user-name">Paulet L.</span>
+        <span class="user-name" id="sidebarName">Paulet L.</span>
         <span class="user-role">Administradora</span>
       </div>
       <span class="badge-admin">Admin</span>
     </div>
+    <button class="change-pw-link" data-action="change-pw">🔒 Cambiar contraseña</button>
 
     <nav class="sidebar-nav">
       <div class="nav-section-label">Principal</div>
@@ -36,10 +37,8 @@
       <a class="nav-item"        data-panel="detalle"    href="#"><span class="nav-icon">◆</span> Detalle</a>
 
       <div class="nav-section-label">Comunicación</div>
-      <a class="nav-item" data-panel="masivo"     href="#"><span class="nav-icon">◆</span> Masivo</a>
-      <a class="nav-item" data-panel="plantillas" href="#"><span class="nav-icon">◆</span> Plantillas</a>
-      <a class="nav-item" data-panel="correos"    href="#"><span class="nav-icon">◆</span> Correos</a>
-      <a class="nav-item" data-panel="cpsia"      href="#"><span class="nav-icon">◆</span> CPSIA</a>
+      <a class="nav-item" data-panel="comunicacion" href="#"><span class="nav-icon">◆</span> Comunicación</a>
+      <a class="nav-item" data-panel="cpsia"        href="#"><span class="nav-icon">◆</span> CPSIA</a>
 
       <div class="nav-section-label">Operación</div>
       <a class="nav-item" data-panel="alertas"  href="#"><span class="nav-icon">◆</span> Alertas</a>
@@ -68,32 +67,8 @@
       </div>
     </section>
 
-    <!-- Panel 3: Masivo -->
-    <section class="panel" id="panel-masivo">
-      <div class="panel-header"><h2 class="panel-title">Notificación Masiva</h2></div>
-      <div class="panel-placeholder">
-        <p class="placeholder-label">Semana 6 · F-12</p>
-        <p class="placeholder-sub">Banner automático cuando una carga entra a E5 o E7. Lista de destinatarios con checkboxes. Paneles de WhatsApp + correo editables antes del envío.</p>
-      </div>
-    </section>
-
-    <!-- Panel 4: Plantillas -->
-    <section class="panel" id="panel-plantillas">
-      <div class="panel-header"><h2 class="panel-title">Plantillas</h2></div>
-      <div class="panel-placeholder">
-        <p class="placeholder-label">Semana 5 · F-08</p>
-        <p class="placeholder-sub">Editor visual con chips de variables clicables ({{proveedor}}, {{eta}}, {{ccs}}…). Selector de trigger por etapa. Importación desde .docx. Preview en vivo.</p>
-      </div>
-    </section>
-
-    <!-- Panel 5: Correos -->
-    <section class="panel" id="panel-correos">
-      <div class="panel-header"><h2 class="panel-title">Correos</h2></div>
-      <div class="panel-placeholder">
-        <p class="placeholder-label">Semana 3 · F-02 + F-05</p>
-        <p class="placeholder-sub">Correos de proveedores agrupados por CCS. Sugerencia del clasificador IA con nivel de confianza. Botón de confirmación para publicar en Monday. Panel de respuesta al proveedor.</p>
-      </div>
-    </section>
+    <!-- Panel 3+4+5: Comunicación (Conversaciones + Masivo + Plantillas) -->
+    <section class="panel" id="panel-comunicacion"></section>
 
     <!-- Panel 6: CPSIA -->
     <section class="panel" id="panel-cpsia">
@@ -141,6 +116,31 @@
     </section>
 
   </main>
+
+  <!-- Change password modal -->
+  <div class="pw-modal-overlay" id="pwModal" hidden>
+    <div class="pw-modal-card">
+      <button class="pw-modal-close" id="pwModalClose" aria-label="Cerrar">×</button>
+      <p class="pw-modal-title">Cambiar contraseña</p>
+      <form id="pw-change-form" novalidate>
+        <div class="login-field">
+          <label class="login-label" for="pw-current">Contraseña actual</label>
+          <input class="login-input" type="password" id="pw-current" placeholder="••••••••" />
+        </div>
+        <div class="login-field">
+          <label class="login-label" for="pw-new">Nueva contraseña</label>
+          <input class="login-input" type="password" id="pw-new" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div class="login-field">
+          <label class="login-label" for="pw-confirm">Confirmar nueva contraseña</label>
+          <input class="login-input" type="password" id="pw-confirm" placeholder="••••••••" />
+        </div>
+        <button class="login-btn" type="submit">Actualizar contraseña</button>
+        <p class="login-error" id="pw-error" role="alert"></p>
+        <p class="pw-modal-success" id="pw-success" hidden></p>
+      </form>
+    </div>
+  </div>
 
   <script type="module" src="/src/js/admin.js"></script>
 </body>

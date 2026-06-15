@@ -1,6 +1,8 @@
 /* ═══════════════════════════════════════
    KAIA Portal — welcome screen + render
    ═══════════════════════════════════════ */
+import { initPasswordModal } from '/src/js/auth.js'
+initPasswordModal()
 
 const WELCOME_MS = 6500
 const FADE_MS    = 1000

@@ -188,8 +188,21 @@ body.portal {
   background: var(--bg-cream);
   border: 1px solid var(--border);
   border-radius: 99px;
-  padding: 4px 12px 4px 4px;
+  padding: 4px 10px 4px 4px;
 }
+
+.portal-change-pw {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  opacity: 0.45;
+  line-height: 1;
+  padding: 0 2px;
+  transition: opacity 0.2s;
+}
+
+.portal-change-pw:hover { opacity: 0.9; }
 
 .user-avatar.sm {
   width: 26px; height: 26px;

@@ -57,8 +57,9 @@
         <span class="live-badge sm"><span class="live-dot"></span> Datos en vivo</span>
       </div>
       <div class="portal-user-pill">
-        <span class="user-avatar sm">YA</span>
-        <span class="user-name-sm">Yonaida</span>
+        <span class="user-avatar sm" id="portalAvatar">YA</span>
+        <span class="user-name-sm" id="portalUserName">Yonaida</span>
+        <button class="portal-change-pw" data-action="change-pw" title="Cambiar contraseña">🔒</button>
       </div>
     </header>
 
@@ -93,6 +94,31 @@
       </span>
       <span class="footer-text">KAIA Command · © 2025 Sicoben Ediciones</span>
     </footer>
+  </div>
+
+  <!-- Change password modal -->
+  <div class="pw-modal-overlay" id="pwModal" hidden>
+    <div class="pw-modal-card">
+      <button class="pw-modal-close" id="pwModalClose" aria-label="Cerrar">×</button>
+      <p class="pw-modal-title">Cambiar contraseña</p>
+      <form id="pw-change-form" novalidate>
+        <div class="login-field">
+          <label class="login-label" for="pw-current">Contraseña actual</label>
+          <input class="login-input" type="password" id="pw-current" placeholder="••••••••" />
+        </div>
+        <div class="login-field">
+          <label class="login-label" for="pw-new">Nueva contraseña</label>
+          <input class="login-input" type="password" id="pw-new" placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div class="login-field">
+          <label class="login-label" for="pw-confirm">Confirmar nueva contraseña</label>
+          <input class="login-input" type="password" id="pw-confirm" placeholder="••••••••" />
+        </div>
+        <button class="login-btn" type="submit">Actualizar contraseña</button>
+        <p class="login-error" id="pw-error" role="alert"></p>
+        <p class="pw-modal-success" id="pw-success" hidden></p>
+      </form>
+    </div>
   </div>
 
   <script type="module" src="/src/js/portal.js"></script>
