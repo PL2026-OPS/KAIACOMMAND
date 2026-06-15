@@ -415,6 +415,55 @@ body.landing {
 }
 .login-forgot:hover { color: rgba(255, 255, 255, 0.65); }
 
+/* ── Google OAuth button ── */
+.login-btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 20px;
+  margin-top: 8px;
+  background: #ffffff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.login-btn-google:hover {
+  background: #f8f9fa;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.12);
+}
+.login-btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-domain-note {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: rgba(255,255,255,0.28);
+  letter-spacing: 0.03em;
+}
+
+/* ── Loading spinner ── */
+.login-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid rgba(255,255,255,0.15);
+  border-top-color: var(--e7);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 16px auto 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ── Forgot result ── */
 .forgot-sent-title {
   font-family: var(--font-serif);

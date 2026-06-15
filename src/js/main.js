@@ -1,145 +1,74 @@
-// ── Mock users ─────────────────────────────────────────────────────────────
-const USERS = {
-  'asistente.direccion@sicobenediciones.com': { role: 'admin',  dest: '/admin.html',  name: 'Paulet',     password: 'kaia2025' },
-  'daniel.benarroch@sicobenediciones.com':    { role: 'admin',  dest: '/admin.html',  name: 'Sr. Daniel', password: 'kaia2025' },
-  'jennibenarroch@sicobenediciones.com':      { role: 'admin',  dest: '/admin.html',  name: 'Jenny',      password: 'kaia2025' },
-  'logistica@sicobenediciones.com':           { role: 'portal', dest: '/portal.html', name: 'Yonaida',    password: 'kaia2025' },
-  'arte@sicobenediciones.com':                { role: 'portal', dest: '/portal.html', name: 'María',      password: 'kaia2025' },
-  'asistenteventas@sicobenediciones.com':     { role: 'portal', dest: '/portal.html', name: 'Aixa',       password: 'kaia2025' },
-  'adm.kadi@sicobenediciones.com':            { role: 'portal', dest: '/portal.html', name: 'Ruth',       password: 'kaia2025' },
-  'asesoreducativo@sicobenediciones.com':     { role: 'portal', dest: '/portal.html', name: 'Orlando',    password: 'kaia2025' },
-}
+import { supabase } from '/src/js/supabase.js'
 
-// ── Password helpers ───────────────────────────────────────────────────────
-function getStoredPasswords() {
-  return JSON.parse(localStorage.getItem('kaia_passwords') || '{}')
-}
-
-function resolvePassword(email) {
-  return getStoredPasswords()[email] ?? USERS[email]?.password
-}
-
-// ── Reset token helpers ────────────────────────────────────────────────────
-function generateToken(email) {
-  const payload = { email, exp: Date.now() + 3600000 }
-  const token   = btoa(JSON.stringify(payload))
-  const tokens  = JSON.parse(localStorage.getItem('kaia_reset_tokens') || '{}')
-  tokens[token] = payload
-  localStorage.setItem('kaia_reset_tokens', JSON.stringify(tokens))
-  return token
-}
-
-// ── DOM refs ───────────────────────────────────────────────────────────────
-const loginView  = document.getElementById('login-view')
-const forgotView = document.getElementById('forgot-view')
-const loginForm  = document.getElementById('login-form')
-const emailInput = document.getElementById('login-username')
-const pwInput    = document.getElementById('login-password')
 const errorEl    = document.getElementById('login-error')
-const forgotLink = document.getElementById('forgot-link')
-const backLink   = document.getElementById('back-to-login')
-const forgotForm = document.getElementById('forgot-form')
-const forgotEmailInput = document.getElementById('forgot-email')
-const forgotResult     = document.getElementById('forgot-result')
+const loginView  = document.getElementById('login-view')
+const loadingEl  = document.getElementById('login-loading')
 
-// ── Login ──────────────────────────────────────────────────────────────────
-function showError(msg, isSuccess = false) {
+// ── Mostrar error ──────────────────────────────────────────────────────────
+function showError(msg) {
   errorEl.textContent = msg
   errorEl.classList.add('visible')
-  if (isSuccess) {
-    errorEl.style.cssText = 'background:rgba(42,189,168,0.14);border-color:rgba(42,189,168,0.3);color:var(--e7)'
-  } else {
-    errorEl.style.cssText = ''
-    emailInput.classList.add('login-input--error')
-    pwInput.classList.add('login-input--error')
-  }
 }
 
-function clearError() {
-  errorEl.classList.remove('visible')
-  errorEl.style.cssText = ''
-  emailInput.classList.remove('login-input--error')
-  pwInput.classList.remove('login-input--error')
-}
+// ── Redirigir según rol ────────────────────────────────────────────────────
+async function redirectByRole(email) {
+  const { data: perfil, error } = await supabase
+    .from('usuarios')
+    .select('rol')
+    .eq('email', email.toLowerCase())
+    .single()
 
-loginForm.addEventListener('submit', (e) => {
-  e.preventDefault()
-  const key = emailInput.value.trim().toLowerCase()
-  const pw  = pwInput.value
-
-  if (!key || !pw) {
-    showError('Por favor completa todos los campos.')
+  if (error || !perfil) {
+    await supabase.auth.signOut()
+    loadingEl.hidden = true
+    loginView.hidden = false
+    showError('Tu correo no está autorizado. Contacta a Paulet.')
     return
   }
 
-  const user = USERS[key]
-  if (!user || pw !== resolvePassword(key)) {
-    showError('Correo o contraseña incorrectos.')
-    pwInput.value = ''
-    pwInput.focus()
+  window.location.href = perfil.rol === 'admin' ? '/admin.html' : '/portal.html'
+}
+
+// ── Verificar sesión existente (incluye callback de OAuth) ─────────────────
+async function handleAuth() {
+  if (!supabase) {
+    // Sin Supabase configurado — modo desarrollo sin OAuth
+    loadingEl.hidden = true
+    loginView.hidden = false
     return
   }
 
-  sessionStorage.setItem('kaia_user', JSON.stringify({ email: key, ...user }))
-  window.location.href = user.dest
-})
+  const { data: { session } } = await supabase.auth.getSession()
 
-emailInput.addEventListener('input', clearError)
-pwInput.addEventListener('input', clearError)
+  if (session?.user?.email) {
+    await redirectByRole(session.user.email)
+    return
+  }
 
-// ── Switch to forgot view ──────────────────────────────────────────────────
-forgotLink.addEventListener('click', (e) => {
-  e.preventDefault()
-  loginView.hidden = true
-  forgotView.hidden = false
-  forgotEmailInput.focus()
-})
-
-backLink.addEventListener('click', (e) => {
-  e.preventDefault()
-  forgotView.hidden = true
+  // Sin sesión — mostrar botón de login
+  loadingEl.hidden = true
   loginView.hidden = false
-  // Reset forgot view for next use
-  forgotForm.reset()
-  forgotForm.hidden = false
-  forgotResult.hidden = true
-  forgotResult.innerHTML = ''
-})
+}
 
-// ── Forgot password ────────────────────────────────────────────────────────
-forgotForm.addEventListener('submit', (e) => {
-  e.preventDefault()
-  const email = forgotEmailInput.value.trim().toLowerCase()
+// ── Botón Google ───────────────────────────────────────────────────────────
+document.getElementById('btn-google-login')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-google-login')
+  btn.disabled = true
+  btn.textContent = 'Redirigiendo...'
 
-  if (USERS[email]) {
-    const token    = generateToken(email)
-    const resetUrl = `${location.origin}/reset.html?token=${token}`
-    showForgotResult(email, resetUrl)
-  } else {
-    // Don't reveal whether email exists
-    showForgotResult(email, null)
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/',
+      queryParams: { hd: 'sicobenediciones.com' },
+    },
+  })
+
+  if (error) {
+    btn.disabled = false
+    btn.innerHTML = `<span class="google-icon">G</span> Continuar con Google`
+    showError('Error al conectar con Google. Intenta de nuevo.')
   }
-
-  forgotForm.hidden = true
-  forgotResult.hidden = false
 })
 
-function showForgotResult(email, resetUrl) {
-  forgotResult.innerHTML = `
-    <p class="forgot-sent-title">Revisa tu correo</p>
-    <p class="forgot-sent-sub">
-      Si <strong>${email}</strong> está registrado, recibirás un link de acceso en tu bandeja.
-    </p>
-    ${resetUrl ? `
-    <div class="forgot-dev-block">
-      <p class="forgot-dev-label">🛠 Modo prueba — usa este link directamente:</p>
-      <a class="forgot-reset-link" href="${resetUrl}">Restablecer contraseña →</a>
-    </div>` : ''}
-  `
-}
-
-// ── Success message after password reset ──────────────────────────────────
-const params = new URLSearchParams(location.search)
-if (params.get('reset') === 'ok') {
-  showError('✓ Contraseña actualizada. Ya puedes iniciar sesión.', true)
-}
+handleAuth()

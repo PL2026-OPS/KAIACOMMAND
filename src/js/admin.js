@@ -3,6 +3,13 @@
    ═══════════════════════════════════════ */
 import { initPasswordModal } from '/src/js/auth.js'
 import { supabase } from '/src/js/supabase.js'
+
+// ── Guard: redirigir si no hay sesión activa ───────────────────────────────
+if (supabase) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) window.location.replace('/')
+}
+
 initPasswordModal()
 
 // Populate sidebar with session user
