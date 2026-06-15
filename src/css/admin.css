@@ -2314,6 +2314,157 @@ mark.tpl-var-resolved {
 .reply-attach-x:hover { color: var(--e4); }
 
 /* ═══════════════════════════════
+   CRM EMAIL PANEL — Pipedrive style
+   ═══════════════════════════════ */
+
+/* Thread list items */
+.crm-thread-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s;
+}
+.crm-thread-item:hover    { background: #f5f2eb; }
+.crm-thread-item--active  { background: #f0ede4; border-left-color: var(--e1); }
+.crm-thread-item--unread .crm-thread-sender { font-weight: 700; }
+
+.crm-thread-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--e2);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.crm-thread-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.crm-thread-row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.crm-thread-sender { font-size: 13px; font-weight: 600; color: #1a1a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crm-thread-time   { font-size: 11px; color: rgba(0,0,0,0.4); flex-shrink: 0; font-family: var(--font-mono); }
+
+.crm-thread-row2 { display: flex; align-items: center; gap: 6px; }
+.crm-thread-subject { font-size: 12px; color: rgba(0,0,0,0.65); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.crm-thread-badge { background: var(--e4); color: #fff; border-radius: 10px; font-size: 10px; font-weight: 700; padding: 1px 6px; flex-shrink: 0; }
+
+.crm-thread-row3 { margin-top: 2px; }
+.crm-tag {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--tc, #888) 12%, transparent);
+  color: var(--tc, #888);
+  border: 1px solid color-mix(in srgb, var(--tc, #888) 25%, transparent);
+}
+.crm-tag--inbox { --tc: #888; }
+
+/* Thread header */
+.crm-thread-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  position: sticky; top: 0; z-index: 2;
+}
+.crm-thread-title { font-family: var(--font-serif); font-size: 20px; font-weight: 700; color: #1a1a1a; margin: 0 0 8px; }
+.crm-thread-meta  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.crm-ccs-code  { font-family: var(--font-mono); font-size: 11px; font-weight: 600; color: rgba(0,0,0,0.5); }
+.crm-etapa-chip {
+  font-size: 11px; font-weight: 600; font-family: var(--font-sans);
+  padding: 2px 10px; border-radius: 20px;
+  background: color-mix(in srgb, var(--c, #888) 12%, transparent);
+  color: var(--c, #888);
+}
+.crm-etapa-chip--inbox { --c: #888; }
+.crm-msg-count { font-size: 11px; color: rgba(0,0,0,0.35); margin-left: auto; }
+
+/* Messages feed */
+.crm-messages { display: flex; flex-direction: column; gap: 0; padding: 16px 24px; overflow-y: auto; flex: 1; }
+
+.crm-msg {
+  display: flex;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+  animation: msgIn 0.2s ease;
+}
+.crm-msg:last-child { border-bottom: none; }
+@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.crm-msg--pending .crm-msg-card { border-left: 3px solid var(--e3); padding-left: 14px; }
+.crm-msg--sent    .crm-msg-card { border-left: 3px solid var(--e7); padding-left: 14px; }
+
+.crm-msg-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0;
+  margin-top: 2px;
+}
+.crm-msg-avatar--recv { background: var(--e2); }
+.crm-msg-avatar--sent { background: var(--e7); }
+
+.crm-msg-card { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+
+.crm-msg-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.crm-msg-sender-info { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.crm-msg-sender { font-weight: 700; font-size: 14px; color: #1a1a1a; }
+.crm-msg-email  { font-size: 12px; color: rgba(0,0,0,0.4); font-family: var(--font-mono); }
+.crm-msg-you    { font-size: 11px; background: var(--e7); color: #fff; padding: 1px 7px; border-radius: 10px; font-weight: 600; }
+.crm-msg-time   { font-size: 11px; color: rgba(0,0,0,0.4); font-family: var(--font-mono); flex-shrink: 0; }
+
+.crm-msg-subject { font-weight: 600; font-size: 13px; color: #333; margin: 0; }
+
+.crm-msg-body {
+  font-size: 13px; color: rgba(0,0,0,0.72); line-height: 1.6;
+  max-height: 180px; overflow-y: auto;
+  background: var(--bg-cream); border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.crm-msg-attachments { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.crm-msg-footer {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.crm-ia-row { display: flex; align-items: center; gap: 6px; }
+.crm-ia-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.crm-ia-label { font-size: 12px; color: rgba(0,0,0,0.55); }
+.crm-ia-label strong { color: #1a1a1a; }
+
+.crm-msg-actions { display: flex; gap: 8px; margin-left: auto; }
+
+.btn-crm-reply {
+  padding: 7px 14px; border-radius: var(--radius-btn);
+  background: transparent; border: 1px solid rgba(0,0,0,0.15);
+  font-size: 12px; font-family: var(--font-sans); color: rgba(0,0,0,0.65);
+  cursor: pointer; transition: background 0.12s;
+}
+.btn-crm-reply:hover { background: var(--bg-cream); }
+
+.btn-crm-confirm {
+  padding: 7px 16px; border-radius: var(--radius-btn);
+  background: #1a1a1a; border: none;
+  font-size: 12px; font-family: var(--font-sans); font-weight: 600; color: #fff;
+  cursor: pointer; transition: background 0.12s;
+}
+.btn-crm-confirm:hover { background: #333; }
+
+.crm-confirmed {
+  font-size: 12px; color: var(--e6); font-weight: 600;
+}
+
+/* ═══════════════════════════════
    CPSIA PANEL
    ═══════════════════════════════ */
 

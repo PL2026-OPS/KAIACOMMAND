@@ -321,91 +321,47 @@ Paulet Bermúdez
 ON CONFLICT (id) DO NOTHING;
 
 -- ── Hilos de correo ──────────────────────────────────────────────
-WITH hilo_fcl AS (
-  INSERT INTO correos_hilo (ccs, etapa_idx) VALUES ('2025C-FCL', 5) RETURNING id
-),
-hilo_lcl AS (
-  INSERT INTO correos_hilo (ccs, etapa_idx) VALUES ('2025B-LCL', 2) RETURNING id
-)
+INSERT INTO correos_hilo (ccs, etapa_idx) VALUES ('2025C-FCL', 5);
+INSERT INTO correos_hilo (ccs, etapa_idx) VALUES ('2025B-LCL', 2);
+
 -- ── Mensajes — hilo 2025C-FCL ────────────────────────────────────
 INSERT INTO mensajes_correo (id, hilo_id, ccs, de_nombre, de_email, asunto, cuerpo, resumen, tipo, confianza, confirmado, adjuntos, fecha_mensaje)
-SELECT
+VALUES (
   'c1b',
-  (SELECT id FROM correos_hilo WHERE ccs = '2025C-FCL'),
-  '2025C-FCL',
-  'Paulet Bermúdez',
-  'paulet@sicoben.com',
+  (SELECT id FROM correos_hilo WHERE ccs = '2025C-FCL' LIMIT 1),
+  '2025C-FCL', 'Paulet Bermúdez', 'paulet@sicoben.com',
   'Production Update — Christmas Collection',
-  'Hello Johnson,
+  'Hello Johnson, Could you please send me an update on the production status of the Christmas Collection? We would also appreciate some photos of the current batch and the latest QC report. Thank you, Paulet',
+  NULL, 'enviado', NULL, true, '[]'::jsonb,
+  '2026-06-07 15:22:00+00'::timestamptz
+);
 
-Could you please send me an update on the production status of the Christmas Collection?
-
-We''d also appreciate some photos of the current batch and the latest QC report.
-
-Thank you,
-Paulet',
-  NULL,
-  'enviado',
-  NULL,
-  true,
-  '[]'::jsonb,
-  '2026-06-07 15:22:00+00'
-UNION ALL
-SELECT
+INSERT INTO mensajes_correo (id, hilo_id, ccs, de_nombre, de_email, asunto, cuerpo, resumen, tipo, confianza, confirmado, adjuntos, fecha_mensaje)
+VALUES (
   'c1a',
-  (SELECT id FROM correos_hilo WHERE ccs = '2025C-FCL'),
-  '2025C-FCL',
-  'Johnson Li',
-  'johnson@ninjobumbo.com',
+  (SELECT id FROM correos_hilo WHERE ccs = '2025C-FCL' LIMIT 1),
+  '2025C-FCL', 'Johnson Li', 'johnson@ninjobumbo.com',
   'RE: Production Update — Christmas Collection',
-  'Hi Paulet,
-
-Good news — production is now at 85% completion. We expect to finish the full batch by June 20th.
-
-I''m attaching the latest QC report and photos of batch #2 for your review. The color quality on the hardcover titles looks great.
-
-Please confirm if everything looks good on your side.
-
-Best regards,
-Johnson Li
-Ningbo Jumbo Co. Ltd.',
+  'Hi Paulet, Good news — production is now at 85% completion. We expect to finish the full batch by June 20th. I am attaching the latest QC report and photos of batch #2 for your review. Best regards, Johnson Li, Ningbo Jumbo Co. Ltd.',
   'Confirma producción al 85%. Adjunta reporte QC y fotos del lote 2.',
-  'recibido',
-  94,
-  false,
+  'recibido', 94, false,
   '[{"name":"cover_sample.jpg","type":"image"},{"name":"batch2_photo.jpg","type":"image"},{"name":"QC_Report_Jun8.pdf","type":"file"}]'::jsonb,
-  '2026-06-08 09:14:00+00';
+  '2026-06-08 09:14:00+00'::timestamptz
+);
 
 -- ── Mensajes — hilo 2025B-LCL ────────────────────────────────────
 INSERT INTO mensajes_correo (id, hilo_id, ccs, de_nombre, de_email, asunto, cuerpo, resumen, tipo, confianza, confirmado, adjuntos, fecha_mensaje)
-SELECT
+VALUES (
   'c2a',
-  (SELECT id FROM correos_hilo WHERE ccs = '2025B-LCL'),
-  '2025B-LCL',
-  'Priya Sharma',
-  'priya@mumbaibookprint.in',
+  (SELECT id FROM correos_hilo WHERE ccs = '2025B-LCL' LIMIT 1),
+  '2025B-LCL', 'Priya Sharma', 'priya@mumbaibookprint.in',
   'Proforma Invoice — Educational Books Q1',
-  'Dear Paulet,
-
-Please find attached the proforma invoice for the Educational Books Q1 order.
-
-Summary:
-• 18 titles
-• Total amount: USD 42,300
-• 30% advance to confirm the order
-• Production start: July 20th
-
-Kindly review and confirm so we can block the production slot.
-
-Warm regards,
-Priya Sharma
-Mumbai Book Printers Pvt.',
+  'Dear Paulet, Please find attached the proforma invoice for the Educational Books Q1 order. Summary: 18 titles, Total: USD 42,300, 30% advance required, Production start: July 20th. Warm regards, Priya Sharma, Mumbai Book Printers Pvt.',
   'Proforma por $42,300 USD. 18 títulos, inicio de producción 20 Jul.',
-  'recibido',
-  88,
-  false,
+  'recibido', 88, false,
   '[{"name":"Proforma_MBP_2025B.pdf","type":"file"}]'::jsonb,
-  '2026-06-07 11:40:00+00';
+  '2026-06-07 11:40:00+00'::timestamptz
+);
 
 -- ── Alertas ──────────────────────────────────────────────────────
 INSERT INTO alertas (id, ccs, semaforo, icono, tipo, mensaje) VALUES

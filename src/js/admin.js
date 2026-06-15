@@ -1142,15 +1142,22 @@ function renderComunicacionPanel() {
   if (commTab === 'plantillas')     renderCommPlantillas(body)
 }
 
-/* TAB 1 — Conversaciones (hilos por carga, intacto) */
+/* TAB 1 — Conversaciones */
 function renderCommConversaciones(body) {
+  const total     = MOCK_CORREOS.length
+  const pendientes = MOCK_CORREOS.reduce((n, t) =>
+    n + t.mensajes.filter(m => m.tipo === 'recibido' && !m.confirmado && !confirmedMsgs.has(m.id)).length, 0)
+
   body.innerHTML = `
     <div class="correos-layout">
-      <aside class="plist-sidebar">
-        <p class="plist-count">${MOCK_CORREOS.length} hilos activos</p>
+      <aside class="plist-sidebar" style="width:280px;flex-shrink:0">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:700;color:#1a1a1a">${total} conversaciones</span>
+          ${pendientes ? `<span style="background:var(--e4);color:#fff;border-radius:10px;font-size:11px;font-weight:700;padding:2px 8px">${pendientes} pendientes</span>` : ''}
+        </div>
         <div class="clist-items" id="clistItems"></div>
       </aside>
-      <div class="correos-thread" id="correosThread"></div>
+      <div class="correos-thread" id="correosThread" style="flex:1;overflow-y:auto;display:flex;flex-direction:column"></div>
     </div>
   `
   const clistItems = document.getElementById('clistItems')
@@ -1441,19 +1448,36 @@ let MOCK_CORREOS = [
 const confirmedMsgs = new Set()
 let currentCcs = MOCK_CORREOS[0].ccs
 
+const _esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+
 function renderClist(container) {
   container.innerHTML = MOCK_CORREOS.map(t => {
     const pendientes = t.mensajes.filter(m => m.tipo === 'recibido' && !m.confirmado && !confirmedMsgs.has(m.id)).length
-    const ultimo = t.mensajes[t.mensajes.length - 1]
+    const ultimo     = t.mensajes[t.mensajes.length - 1]
+    const etapa      = ETAPAS[t.etapa_idx]
+    const isInbox    = t.ccs === 'INBOX'
+    const iniciales  = _esc(ultimo.de).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    const fechaCorta = (ultimo.fecha || '').split(',')[0]
+
     return `
-      <div class="clist-item ${t.ccs === currentCcs ? 'clist-item--active' : ''}"
-           data-ccs="${t.ccs}" role="button" tabindex="0">
-        <div class="clist-top">
-          <span class="ccs-code">${t.ccs}</span>
-          ${pendientes ? `<span class="clist-badge-pendiente">${pendientes}</span>` : ''}
+      <div class="crm-thread-item ${t.ccs === currentCcs ? 'crm-thread-item--active' : ''} ${pendientes ? 'crm-thread-item--unread' : ''}"
+           data-ccs="${_esc(t.ccs)}" role="button" tabindex="0">
+        <div class="crm-thread-avatar">${iniciales}</div>
+        <div class="crm-thread-content">
+          <div class="crm-thread-row1">
+            <span class="crm-thread-sender">${_esc(ultimo.de)}</span>
+            <span class="crm-thread-time">${_esc(fechaCorta)}</span>
+          </div>
+          <div class="crm-thread-row2">
+            <span class="crm-thread-subject">${_esc(ultimo.asunto)}</span>
+            ${pendientes ? `<span class="crm-thread-badge">${pendientes}</span>` : ''}
+          </div>
+          <div class="crm-thread-row3">
+            ${isInbox
+              ? `<span class="crm-tag crm-tag--inbox">📥 Sin clasificar</span>`
+              : `<span class="crm-tag" style="--tc:${etapa?.color || '#888'}">${_esc(t.ccs)}</span>`}
+          </div>
         </div>
-        <span class="clist-nombre">${t.nombre}</span>
-        <span class="clist-preview">${ultimo.de} · ${ultimo.asunto}</span>
       </div>
     `
   }).join('')
@@ -1531,70 +1555,70 @@ function renderThread(container) {
   if (!thread) return
   const etapa = ETAPAS[thread.etapa_idx]
 
-  const msgsHtml = thread.mensajes.map(m => {
+  const msgsHtml = thread.mensajes.map((m, idx) => {
     const isConfirmed = m.confirmado || confirmedMsgs.has(m.id)
     const pendiente   = m.tipo === 'recibido' && !isConfirmed
     const enviado     = m.tipo === 'enviado'
-    const iniciales   = m.de.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    const iniciales   = _esc(m.de).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+    const confColor   = (m.confianza || 0) >= 90 ? 'var(--e6)' : 'var(--e3)'
+    const adjuntosHtml = (m.adjuntos?.length)
+      ? `<div class="crm-msg-attachments">${m.adjuntos.map(renderAdjunto).join('')}</div>` : ''
 
-    // Cuerpo real del correo (escapado)
     const cuerpoHtml = (m.cuerpo || '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\n/g, '<br>')
-
-    const adjuntosHtml = m.adjuntos.length
-      ? `<div class="msg-adjuntos">${m.adjuntos.map(renderAdjunto).join('')}</div>`
-      : ''
-
-    // IA + Responder: footer discreto, solo en correos recibidos
-    let iaHtml = ''
-    if (m.tipo === 'recibido') {
-      const replyBtn = `<button class="btn-msg-reply" data-reply-id="${m.id}">↩ Responder</button>`
-      if (pendiente) {
-        const color = m.confianza >= 90 ? 'var(--e6)' : 'var(--e3)'
-        iaHtml = `
-          <div class="msg-ia-foot">
-            <span class="msg-ia-chip" style="--bc:${color}">🤖 IA sugiere <strong>${thread.ccs}</strong> · ${m.confianza}%</span>
-            <div class="msg-ia-actions">
-              ${replyBtn}
-              <button class="btn-ia-confirmar" data-msg-id="${m.id}">📌 Publicar en Monday</button>
-            </div>
-          </div>`
-      } else {
-        iaHtml = `
-          <div class="msg-ia-foot">
-            <span class="msg-ia-confirmed">✓ Confirmado · publicado en Monday</span>
-            <div class="msg-ia-actions">${replyBtn}</div>
-          </div>`
-      }
-    }
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
 
     return `
-      <div class="msg-row msg-row--${m.tipo} ${pendiente ? 'msg-row--pendiente' : ''}">
-        <div class="msg-avatar msg-avatar--${m.tipo}">${iniciales}</div>
-        <div class="msg-bubble">
-          <div class="msg-head">
-            <span class="msg-de">${m.de}</span>
-            ${enviado ? `<span class="msg-you-tag">Tú</span>` : `<span class="msg-email">${m.email}</span>`}
-            <span class="msg-fecha">${m.fecha}</span>
+      <div class="crm-msg ${enviado ? 'crm-msg--sent' : 'crm-msg--recv'} ${pendiente ? 'crm-msg--pending' : ''}">
+        <div class="crm-msg-avatar crm-msg-avatar--${enviado ? 'sent' : 'recv'}">${iniciales}</div>
+        <div class="crm-msg-card">
+          <div class="crm-msg-header">
+            <div class="crm-msg-sender-info">
+              <span class="crm-msg-sender">${_esc(m.de)}</span>
+              ${enviado
+                ? `<span class="crm-msg-you">Tú</span>`
+                : `<span class="crm-msg-email">&lt;${_esc(m.email || '')}&gt;</span>`}
+            </div>
+            <span class="crm-msg-time">${_esc(m.fecha || '')}</span>
           </div>
-          ${cuerpoHtml ? `<p class="msg-cuerpo">${cuerpoHtml}</p>` : ''}
+          <p class="crm-msg-subject">${_esc(m.asunto || '')}</p>
+          ${cuerpoHtml ? `<div class="crm-msg-body">${cuerpoHtml}</div>` : ''}
           ${adjuntosHtml}
-          ${iaHtml}
-          ${m.tipo === 'recibido' ? `<div class="msg-reply-slot" id="reply-slot-${m.id}"></div>` : ''}
+          ${m.tipo === 'recibido' ? `
+            <div class="crm-msg-footer">
+              ${pendiente ? `
+                <div class="crm-ia-row">
+                  <span class="crm-ia-dot" style="background:${confColor}"></span>
+                  <span class="crm-ia-label">IA sugiere <strong>${_esc(thread.ccs)}</strong>${m.confianza ? ` · ${m.confianza}%` : ''}</span>
+                </div>
+                <div class="crm-msg-actions">
+                  <button class="btn-crm-reply btn-msg-reply" data-reply-id="${_esc(m.id)}">↩ Responder</button>
+                  <button class="btn-crm-confirm btn-ia-confirmar" data-msg-id="${_esc(m.id)}">📌 Publicar en Monday</button>
+                </div>
+              ` : `
+                <span class="crm-confirmed">✓ Publicado en Monday</span>
+                <button class="btn-crm-reply btn-msg-reply" data-reply-id="${_esc(m.id)}">↩ Responder</button>
+              `}
+            </div>
+            <div class="msg-reply-slot" id="reply-slot-${_esc(m.id)}"></div>
+          ` : ''}
         </div>
       </div>`
   }).join('')
 
   container.innerHTML = `
-    <div class="thread-header">
-      <div>
-        <span class="tpl-editing-label">Hilo de correos</span>
-        <h2 class="tpl-editing-name">${thread.nombre}</h2>
+    <div class="crm-thread-header">
+      <div class="crm-thread-header-left">
+        <h2 class="crm-thread-title">${_esc(thread.nombre)}</h2>
+        <div class="crm-thread-meta">
+          <span class="crm-ccs-code">${_esc(thread.ccs)}</span>
+          ${etapa
+            ? `<span class="crm-etapa-chip" style="--c:${etapa.color}">${etapa.id} · ${etapa.nombre}</span>`
+            : `<span class="crm-etapa-chip crm-etapa-chip--inbox">📥 Pendiente de clasificar</span>`}
+          <span class="crm-msg-count">${thread.mensajes.length} mensaje${thread.mensajes.length !== 1 ? 's' : ''}</span>
+        </div>
       </div>
-      <span class="plist-stage-chip" style="--c:${etapa.color}">${etapa.id} · ${etapa.nombre}</span>
     </div>
-    <div id="threadMsgs">${msgsHtml}</div>
+    <div class="crm-messages">${msgsHtml}</div>
   `
 
   container.querySelectorAll('.btn-ia-confirmar').forEach(btn => {
