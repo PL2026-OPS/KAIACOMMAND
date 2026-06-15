@@ -1,0 +1,2 @@
+# Git hooks must keep LF endings or the shebang breaks when executed by sh.
+/.githooks/** text eol=lf

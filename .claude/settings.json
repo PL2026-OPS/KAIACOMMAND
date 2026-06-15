@@ -1,18 +1,5 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "agent",
-            "if": "Bash(git push*)",
-            "prompt": "$ARGUMENTS contiene el JSON del comando Bash interceptado. Este hook SOLO debe revisar pushes a la rama main (producción); cualquier otro push se permite sin molestar.\n\n1. Lee el comando en tool_input.command y determina la rama DESTINO del push:\n   - Si el comando nombra una rama (ej. 'git push origin main'), usa esa.\n   - Si no la nombra (ej. 'git push'), ejecuta 'git rev-parse --abbrev-ref HEAD' para obtener la rama actual.\n\n2. Si la rama destino NO es 'main', PERMITE de inmediato sin preguntar nada. Devuelve:\n   {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}\n\n3. Si la rama destino ES 'main' (producción), prepara la revisión:\n   a. Ejecuta 'git diff --name-only origin/main...HEAD' para listar los archivos.\n   b. Para cada archivo, mira 'git diff origin/main...HEAD -- <archivo>' y resúmelo en 1-2 líneas claras.\n   c. Arma un texto con este formato:\n      📄 SE PUBLICARÁ A PRODUCCIÓN (main):\n      - archivo1: [qué cambió]\n      - archivo2: [qué cambió]\n      ⚠️ Recuerda correr el checklist de la skill deploy-checklist antes de confirmar.\n   d. Devuelve ese texto como motivo y pide confirmación nativa al usuario:\n      {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<el texto del resumen + '¿Confirmas publicar a producción?'>\"}}\n\nNunca bloquees comandos que no sean git push: si por algún motivo el comando no es un push, permítelo con permissionDecision allow.",
-            "statusMessage": "Revisando si es push a main (producción)..."
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "matcher": "",

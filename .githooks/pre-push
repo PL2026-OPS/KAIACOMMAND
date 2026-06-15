@@ -1,0 +1,70 @@
+#!/bin/sh
+# ─────────────────────────────────────────────────────────────────────────
+# KAIA Command — pre-push gate
+# Nunca publicar a main (producción) sin revisión + confirmación humana.
+#
+# git ejecuta este hook en CUALQUIER push, sin importar cómo se invoque el
+# comando, y nos pasa las refs REALES por stdin:
+#   <local_ref> <local_sha> <remote_ref> <remote_sha>
+#
+# Comportamiento para pushes que tocan main:
+#   • Terminal interactiva  → muestra resumen y pide "sí/no" (cancela si "no").
+#   • Sesión no interactiva → BLOQUEA por defecto, salvo KAIA_ALLOW_MAIN_PUSH=1
+#     (que el flujo de "publicar" setea SOLO tras tu confirmación explícita).
+# Pushes a staging u otras ramas: pasan sin molestar.
+# ─────────────────────────────────────────────────────────────────────────
+PROTECTED="refs/heads/main"
+ZERO="0000000000000000000000000000000000000000"
+block=0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Solo nos importa lo que apunte a main.
+  [ "$remote_ref" = "$PROTECTED" ] || continue
+
+  # Confirmación explícita ya dada por el humano (la setea el flujo publicar).
+  if [ "$KAIA_ALLOW_MAIN_PUSH" = "1" ]; then
+    continue
+  fi
+
+  # Borrado de main en remoto: siempre frenar.
+  if [ "$local_sha" = "$ZERO" ]; then
+    echo "🚫 Intento de BORRAR la rama main en remoto — bloqueado." 1>&2
+    block=1
+    continue
+  fi
+
+  # Rango de cambios a publicar (maneja primer push a main).
+  if [ "$remote_sha" = "$ZERO" ]; then
+    range="$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+
+  # ¿Hay terminal real para preguntar? Si no, bloquear (fail-closed).
+  if { exec 3</dev/tty; } 2>/dev/null; then
+    {
+      echo ""
+      echo "⚠️  Vas a PUBLICAR A PRODUCCIÓN (main)."
+      echo "── Commits que se publicarían ──"
+      git log --oneline "$range" 2>/dev/null || git log --oneline -10 "$local_sha"
+      echo "── Archivos y líneas ──"
+      git diff --stat "$range" 2>/dev/null
+      echo ""
+      printf "¿Confirmas publicar a main? (sí/no): "
+    } > /dev/tty
+    read -r answer <&3
+    exec 3<&-
+    case "$answer" in
+      sí|Sí|si|Si|SI|s|S|y|Y|yes|YES) : ;;  # confirmado → permitir
+      *) echo "🚫 Push a main cancelado." > /dev/tty; block=1 ;;
+    esac
+  else
+    echo "🚫 Push a main BLOQUEADO: sesión no interactiva sin confirmación." 1>&2
+    echo "   Revisa los cambios con el humano; tras su 'sí' reintenta con:" 1>&2
+    echo "     KAIA_ALLOW_MAIN_PUSH=1 git push origin main" 1>&2
+    block=1
+  fi
+done
+
+[ "$block" = "1" ] && exit 1
+exit 0
