@@ -2164,8 +2164,10 @@ function renderCpsiaAnalyzer(container) {
         </div>
       </div>
       <div class="cpsia-analyzer-input-row">
-        <input class="cpsia-sheet-input" id="cpsiaSheetUrl" type="url"
+        <input class="cpsia-sheet-input" id="cpsiaSheetUrl" type="url" style="flex:3"
           placeholder="https://docs.google.com/spreadsheets/d/..." />
+        <input class="cpsia-sheet-input" id="cpsiaCcsInput" type="text" style="flex:1;max-width:160px"
+          placeholder="CCS (ej: 2025B-LCL)" />
         <button class="btn-cpsia-analyze" id="btnAnalyzeSheet">🔍 Analizar</button>
       </div>
       <div id="cpsiaAnalyzeResult"></div>
@@ -2262,6 +2264,23 @@ Por favor coordina la documentación con el proveedor.</pre>
           </div>
         ` : `<p style="color:var(--e6);font-weight:600;margin-top:16px">✅ Ningún producto requiere prueba CPSIA.</p>`}
       `
+
+      // Guardar historial en Supabase
+      if (supabase && flagged.length >= 0) {
+        const ccsInput = document.getElementById('cpsiaCcsInput')?.value?.trim() || 'CPSIA-' + Date.now()
+        await supabase.from('historial_eventos').insert({
+          ccs:    ccsInput,
+          tipo:   'alerta',
+          icono:  flagged.length ? '⚠️' : '✅',
+          texto:  flagged.length
+            ? `CPSIA: ${flagged.length} producto${flagged.length > 1 ? 's' : ''} requieren prueba — ${flagged.map(p => p.producto).join(', ')}`
+            : 'CPSIA: Todos los productos exentos — sin pruebas requeridas',
+          detalle: `Analizados: ${data.total} · Con prueba: ${flagged.length} · Exentos: ${data.exentos}`,
+          fecha_evento: new Date().toISOString(),
+        }).then(({ error }) => {
+          if (!error) console.log('[KAIA] CPSIA guardado en historial')
+        })
+      }
 
       document.getElementById('btnEnviarYonaida')?.addEventListener('click', (e) => {
         const btn = e.currentTarget
