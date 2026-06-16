@@ -2153,6 +2153,24 @@ function renderCpsiaDetail(container) {
   })
 }
 
+function downloadCSV(filename, products) {
+  const headers = ['#','ITEM NAME','DESCRIPTION','APLICA CPSIA','TEST REQUERIDO','ARTÍCULO / NORMA']
+  const rows = products.map(p => [
+    p.num,
+    `"${(p.itemName||'').replace(/"/g,'""')}"`,
+    `"${(p.description||'').replace(/"/g,'""')}"`,
+    p.aplica ? 'SÍ — REQUIERE PRUEBA' : (p.exento ? 'EXENTO' : 'NO'),
+    `"${(p.test||'').replace(/"/g,'""')}"`,
+    `"${(p.articulo||'').replace(/"/g,'""')}"`,
+  ])
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+}
+
 function renderCpsiaAnalyzer(container) {
   container.innerHTML = `
     <div class="cpsia-analyzer-card">
@@ -2160,7 +2178,7 @@ function renderCpsiaAnalyzer(container) {
         <span class="cpsia-analyzer-icon">📊</span>
         <div>
           <p class="cpsia-analyzer-title">Analizar Google Sheet de Proforma</p>
-          <p class="cpsia-analyzer-hint">Comparte el sheet como "Cualquiera con el enlace puede ver" y pega la URL aquí</p>
+          <p class="cpsia-analyzer-hint">Comparte el sheet como "Cualquiera con el enlace puede ver" · Lee columnas ITEM NAME y DESCRIPTION</p>
         </div>
       </div>
       <div class="cpsia-analyzer-input-row">
@@ -2168,6 +2186,8 @@ function renderCpsiaAnalyzer(container) {
           placeholder="https://docs.google.com/spreadsheets/d/..." />
         <input class="cpsia-sheet-input" id="cpsiaCcsInput" type="text" style="flex:1;max-width:160px"
           placeholder="CCS (ej: 2025B-LCL)" />
+        <input class="cpsia-sheet-input" id="cpsiaNombreInput" type="text" style="flex:1;max-width:200px"
+          placeholder="Nombre de la carga" />
         <button class="btn-cpsia-analyze" id="btnAnalyzeSheet">🔍 Analizar</button>
       </div>
       <div id="cpsiaAnalyzeResult"></div>
@@ -2175,36 +2195,40 @@ function renderCpsiaAnalyzer(container) {
   `
 
   document.getElementById('btnAnalyzeSheet').addEventListener('click', async () => {
-    const url = document.getElementById('cpsiaSheetUrl').value.trim()
+    const sheetUrl = document.getElementById('cpsiaSheetUrl').value.trim()
+    const ccs      = document.getElementById('cpsiaCcsInput').value.trim()
+    const nombre   = document.getElementById('cpsiaNombreInput').value.trim() || ccs
     const resultEl = document.getElementById('cpsiaAnalyzeResult')
-    const btn = document.getElementById('btnAnalyzeSheet')
+    const btn      = document.getElementById('btnAnalyzeSheet')
 
-    if (!url) { resultEl.innerHTML = `<p class="cpsia-analyzer-error">Pega una URL de Google Sheets.</p>`; return }
+    if (!sheetUrl) { resultEl.innerHTML = `<p class="cpsia-analyzer-error">Pega una URL de Google Sheets.</p>`; return }
 
-    btn.textContent = '⏳ Analizando...'
-    btn.disabled = true
-    resultEl.innerHTML = ''
+    btn.textContent = '⏳ Analizando...'; btn.disabled = true
+    resultEl.innerHTML = '<p style="color:#888;margin-top:12px">Leyendo sheet y aplicando reglas CPSIA...</p>'
 
     try {
-      const apiUrl = `/api/analyze-cpsia?url=${encodeURIComponent(url)}`
-      const res = await fetch(apiUrl)
-      const data = await res.json()
+      const apiUrl = `/api/cpsia-full?url=${encodeURIComponent(sheetUrl)}&ccs=${encodeURIComponent(ccs)}&nombre=${encodeURIComponent(nombre)}`
+      const r    = await fetch(apiUrl)
+      const data = await r.json()
 
-      if (!res.ok) {
-        resultEl.innerHTML = `<p class="cpsia-analyzer-error">❌ ${data.error}</p>`
+      if (!r.ok) {
+        resultEl.innerHTML = `<p class="cpsia-analyzer-error">❌ ${_esc(data.error)}</p>`
         btn.textContent = '🔍 Analizar'; btn.disabled = false
         return
       }
 
-      const flagged = data.products.filter(p => p.aplica)
-      const exentos = data.products.filter(p => p.exento)
-      const flaggedList = flagged.map(p => `• ${p.producto} → ${p.test}`).join('\n')
+      const flagged     = data.products.filter(p => p.aplica)
+      const exentos     = data.products.filter(p => p.exento)
+      const flaggedList = flagged.map(p => `• ${p.itemName} → ${p.test}`).join('\n')
+      const filename    = `CPSIA_${(nombre||ccs||'carga').replace(/[^a-zA-Z0-9]/g,'_')}.csv`
 
       resultEl.innerHTML = `
         <div class="cpsia-result-summary">
           <span class="cpsia-result-stat cpsia-result-stat--total">${data.total} productos analizados</span>
           <span class="cpsia-result-stat cpsia-result-stat--alert">⚠️ ${flagged.length} requieren prueba</span>
           <span class="cpsia-result-stat cpsia-result-stat--ok">✓ ${exentos.length} exentos</span>
+          <button class="btn-cpsia-download" id="btnDownloadCSV">⬇ Descargar CSV</button>
+          <button class="btn-cpsia-write" id="btnWriteSheet">📝 Guardar en Google Sheet</button>
         </div>
 
         <div class="cpsia-table-wrap" style="margin-top:16px">
@@ -2212,81 +2236,123 @@ function renderCpsiaAnalyzer(container) {
             <thead>
               <tr>
                 <th class="cpsia-th cpsia-th--num">#</th>
-                <th class="cpsia-th">Producto</th>
-                <th class="cpsia-th">Formato</th>
-                <th class="cpsia-th">Materiales</th>
+                <th class="cpsia-th">ITEM NAME</th>
+                <th class="cpsia-th">DESCRIPTION</th>
                 <th class="cpsia-th">CPSIA</th>
                 <th class="cpsia-th">Test requerido</th>
-                <th class="cpsia-th cpsia-th--num">Qty</th>
+                <th class="cpsia-th">Norma</th>
               </tr>
             </thead>
             <tbody>
               ${data.products.map(p => `
                 <tr class="cpsia-tr ${p.aplica ? 'cpsia-tr--flagged' : p.exento ? 'cpsia-tr--exento' : ''}">
                   <td class="cpsia-td cpsia-td--num">${p.num}</td>
-                  <td class="cpsia-td">
-                    <span class="cpsia-prod-nombre">${_esc(p.producto)}</span>
-                    <span class="cpsia-prod-codigo">${_esc(p.codigo)}</span>
-                  </td>
-                  <td class="cpsia-td"><span class="cpsia-formato-chip">${_esc(p.formato)}</span></td>
-                  <td class="cpsia-td cpsia-td--materials">${_esc(p.materiales)}</td>
+                  <td class="cpsia-td"><span class="cpsia-prod-nombre">${_esc(p.itemName)}</span></td>
+                  <td class="cpsia-td cpsia-td--materials" style="font-size:11px">${_esc(p.description||'—')}</td>
                   <td class="cpsia-td">
                     <span class="cpsia-aplica-badge cpsia-aplica-badge--${p.aplica ? 'si' : 'no'}">
-                      ${p.aplica ? 'Sí' : p.exento ? 'Exento' : '—'}
+                      ${p.aplica ? '⚠️ Sí' : p.exento ? '✓ Exento' : '—'}
                     </span>
                   </td>
-                  <td class="cpsia-td">
-                    <span class="cpsia-test-chip cpsia-test-chip--${p.aplica ? 'alert' : 'exempt'}">
-                      ${_esc(p.test)}
-                    </span>
-                  </td>
-                  <td class="cpsia-td cpsia-td--num">${p.qty ? p.qty.toLocaleString() : '—'}</td>
+                  <td class="cpsia-td"><span class="cpsia-test-chip cpsia-test-chip--${p.aplica ? 'alert' : 'exempt'}">${_esc(p.test)}</span></td>
+                  <td class="cpsia-td" style="font-size:11px;color:#888">${_esc(p.articulo||'')}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
         </div>
 
-        ${flagged.length ? `
-          <div class="cpsia-yonaida-box">
-            <div class="cpsia-yonaida-preview">
-              <p class="cpsia-yonaida-preview-title">📱 Mensaje para Yonaida</p>
-              <pre class="cpsia-yonaida-text">🚨 *CPSIA detectado*
-Se analizó la proforma y ${flagged.length} producto${flagged.length > 1 ? 's' : ''} requiere${flagged.length > 1 ? 'n' : ''} prueba:
+        <div class="cpsia-yonaida-box" style="margin-top:20px">
+          <div class="cpsia-yonaida-preview">
+            <p class="cpsia-yonaida-preview-title">📋 Resumen para Yonaida — ${_esc(nombre||ccs)}</p>
+            <pre class="cpsia-yonaida-text">🚨 *CPSIA Filtro — ${nombre||ccs}*
+Analizados: ${data.total} productos
+Requieren prueba: ${flagged.length}
+Exentos: ${exentos.length}
 
-${flaggedList}
+${flagged.length ? flaggedList : '✅ Ningún producto requiere prueba CPSIA.'}
 
-Por favor coordina la documentación con el proveedor.</pre>
-            </div>
-            <button class="btn-cpsia-yonaida" id="btnEnviarYonaida">
+Generado por KAIA Command</pre>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn-cpsia-yonaida" id="btnEmailYonaida">
+              ✉️ Enviar a Yonaida por Correo
+            </button>
+            <button class="btn-cpsia-yonaida" id="btnWaYonaida" style="background:var(--e7)">
               💬 Enviar a Yonaida por WhatsApp
             </button>
           </div>
-        ` : `<p style="color:var(--e6);font-weight:600;margin-top:16px">✅ Ningún producto requiere prueba CPSIA.</p>`}
+          <div id="cpsiaNotifStatus" style="margin-top:8px;font-size:12px;color:#888"></div>
+        </div>
       `
 
       // Guardar historial en Supabase
-      if (supabase && flagged.length >= 0) {
-        const ccsInput = document.getElementById('cpsiaCcsInput')?.value?.trim() || 'CPSIA-' + Date.now()
-        await supabase.from('historial_eventos').insert({
-          ccs:    ccsInput,
-          tipo:   'alerta',
-          icono:  flagged.length ? '⚠️' : '✅',
-          texto:  flagged.length
-            ? `CPSIA: ${flagged.length} producto${flagged.length > 1 ? 's' : ''} requieren prueba — ${flagged.map(p => p.producto).join(', ')}`
-            : 'CPSIA: Todos los productos exentos — sin pruebas requeridas',
-          detalle: `Analizados: ${data.total} · Con prueba: ${flagged.length} · Exentos: ${data.exentos}`,
+      const ccsForHistory = ccs || 'INBOX'
+      if (supabase) {
+        supabase.from('historial_eventos').insert({
+          ccs:         ccsForHistory,
+          tipo:        'alerta',
+          icono:       flagged.length ? '⚠️' : '✅',
+          texto:       flagged.length
+            ? `CPSIA: ${flagged.length} productos requieren prueba — ${flagged.slice(0,3).map(p=>p.itemName).join(', ')}${flagged.length>3?'...':''}`
+            : 'CPSIA: Todos los productos exentos',
+          detalle:     `Analizados: ${data.total} · Con prueba: ${flagged.length} · Exentos: ${exentos.length}`,
           fecha_evento: new Date().toISOString(),
-        }).then(({ error }) => {
-          if (!error) console.log('[KAIA] CPSIA guardado en historial')
         })
       }
 
-      document.getElementById('btnEnviarYonaida')?.addEventListener('click', (e) => {
-        const btn = e.currentTarget
-        btn.textContent = '✅ Mensaje preparado — pendiente Wassenger'
-        btn.style.background = 'var(--e6)'
-        btn.disabled = true
+      // Descargar CSV
+      document.getElementById('btnDownloadCSV').addEventListener('click', () => {
+        downloadCSV(filename, data.products)
+      })
+
+      // Escribir en Google Sheet
+      document.getElementById('btnWriteSheet').addEventListener('click', async () => {
+        const wBtn = document.getElementById('btnWriteSheet')
+        wBtn.textContent = '⏳ Guardando...'; wBtn.disabled = true
+        const wr = await fetch('/api/cpsia-full', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ sheetId: data.sheetId, ccs, nombre, products: data.products }),
+        })
+        const wd = await wr.json()
+        if (wr.ok) {
+          wBtn.textContent = '✅ Pestaña "CPSIA Filtro" creada'
+          wBtn.style.background = 'var(--e6)'
+        } else {
+          wBtn.textContent = '❌ ' + (wd.error || 'Error'); wBtn.disabled = false
+        }
+      })
+
+      // Email a Yonaida
+      document.getElementById('btnEmailYonaida').addEventListener('click', async () => {
+        const eBtn = document.getElementById('btnEmailYonaida')
+        const status = document.getElementById('cpsiaNotifStatus')
+        eBtn.textContent = '⏳ Enviando correo...'; eBtn.disabled = true
+        const er = await fetch('/api/send-yonaida', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ ccs, nombre, products: data.products, sheetUrl }),
+        })
+        const ed = await er.json()
+        if (er.ok) {
+          eBtn.textContent = '✅ Correo enviado a Yonaida'
+          eBtn.style.background = 'var(--e6)'
+          status.textContent = 'Enviado a logistica@sicobenediciones.com'
+        } else {
+          eBtn.textContent = '❌ Error al enviar'; eBtn.disabled = false
+          status.textContent = ed.error || 'Error desconocido'
+        }
+      })
+
+      // WhatsApp a Yonaida
+      document.getElementById('btnWaYonaida').addEventListener('click', () => {
+        const msg = encodeURIComponent(
+          `🚨 *CPSIA Filtro — ${nombre||ccs}*\n` +
+          `${flagged.length} producto${flagged.length!==1?'s':''} requiere${flagged.length!==1?'n':''} prueba:\n\n` +
+          flaggedList + '\n\nVer detalle en KAIA: kaia.sicoben.com/admin'
+        )
+        window.open(`https://wa.me/+50761112233?text=${msg}`, '_blank')
       })
 
     } catch (err) {

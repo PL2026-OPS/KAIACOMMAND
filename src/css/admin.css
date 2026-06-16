@@ -2545,6 +2545,17 @@ mark.tpl-var-resolved {
 .btn-cpsia-yonaida:hover    { opacity: 0.88; }
 .btn-cpsia-yonaida:disabled { background: var(--e6); opacity: 1; cursor: default; }
 
+.btn-cpsia-download, .btn-cpsia-write {
+  padding: 6px 14px; border: none; border-radius: 20px;
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-cpsia-download { background: rgba(59,184,232,0.15); color: var(--e1); }
+.btn-cpsia-download:hover { opacity: 0.8; }
+.btn-cpsia-write    { background: rgba(141,198,63,0.15); color: var(--e6); }
+.btn-cpsia-write:hover { opacity: 0.8; }
+.btn-cpsia-write:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .cpsia-trigger-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
