@@ -1,16 +1,32 @@
 // api/send-yonaida.js — Envía análisis CPSIA a Yonaida por email
 // POST /api/send-yonaida  body: { ccs, nombre, products, sheetUrl }
 
+const ALLOWED_ORIGINS = ['https://kaia.sicoben.com', 'https://kaiacommand-s-projects.vercel.app']
+const KAIA_SECRET = process.env.KAIA_API_SECRET
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+}
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  const origin = req.headers.origin || ''
+  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin.includes('kaiacommand')
+  res.setHeader('Access-Control-Allow-Origin', allowed ? origin : ALLOWED_ORIGINS[0])
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-kaia-secret')
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).end()
+  if (KAIA_SECRET && req.headers['x-kaia-secret'] !== KAIA_SECRET) return res.status(401).json({ error: 'No autorizado' })
 
   let body
   try { body = JSON.parse(req.body || '{}') } catch { return res.status(400).json({ error: 'Body inválido' }) }
 
-  const { ccs, nombre, products = [], sheetUrl } = body
+  const { ccs: rawCcs, nombre: rawNombre, products = [], sheetUrl: rawSheetUrl } = body
+  const ccs      = esc(rawCcs || '')
+  const nombre   = esc(rawNombre || '')
+  // Validar que sheetUrl sea un Google Sheets URL
+  const sheetUrl = typeof rawSheetUrl === 'string' && rawSheetUrl.startsWith('https://docs.google.com/spreadsheets/')
+    ? rawSheetUrl : null
   if (!products.length) return res.status(400).json({ error: 'products requerido' })
 
   const flagged = products.filter(p => p.aplica)
@@ -20,8 +36,8 @@ export default async function handler(req, res) {
   const tableRows = products.map((p, i) => `
     <tr style="background:${p.aplica ? '#fff8e6' : p.exento ? '#f0fdf4' : '#fff'}">
       <td style="padding:8px 12px;border-bottom:1px solid #eee">${i+1}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600">${p.itemName}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;font-size:12px">${p.description || '—'}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;font-weight:600">${esc(p.itemName)}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;color:#666;font-size:12px">${esc(p.description || '—')}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center">
         ${p.aplica
           ? '<span style="background:#F5A623;color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700">SÍ</span>'
@@ -65,7 +81,7 @@ export default async function handler(req, res) {
           <div style="background:#fff3cd;border:1px solid #F5A623;border-radius:8px;padding:16px;margin-bottom:24px">
             <p style="margin:0 0 8px;font-weight:700">📋 Productos que requieren prueba CPSIA:</p>
             <ul style="margin:0;padding-left:20px">
-              ${flagged.map(p => `<li style="margin-bottom:6px"><strong>${p.itemName}</strong> → ${p.test} <span style="color:#888;font-size:11px">(${p.articulo})</span></li>`).join('')}
+              ${flagged.map(p => `<li style="margin-bottom:6px"><strong>${esc(p.itemName)}</strong> → ${esc(p.test)} <span style="color:#888;font-size:11px">(${esc(p.articulo)})</span></li>`).join('')}
             </ul>
           </div>
         ` : ''}

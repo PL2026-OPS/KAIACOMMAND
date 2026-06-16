@@ -2219,7 +2219,7 @@ function renderCpsiaAnalyzer(container) {
 
       const flagged     = data.products.filter(p => p.aplica)
       const exentos     = data.products.filter(p => p.exento)
-      const flaggedList = flagged.map(p => `• ${p.itemName} → ${p.test}`).join('\n')
+      const flaggedList = flagged.map(p => `• ${_esc(p.itemName)} → ${_esc(p.test)}`).join('\n')
       const filename    = `CPSIA_${(nombre||ccs||'carga').replace(/[^a-zA-Z0-9]/g,'_')}.csv`
 
       resultEl.innerHTML = `
@@ -2265,14 +2265,7 @@ function renderCpsiaAnalyzer(container) {
         <div class="cpsia-yonaida-box" style="margin-top:20px">
           <div class="cpsia-yonaida-preview">
             <p class="cpsia-yonaida-preview-title">📋 Resumen para Yonaida — ${_esc(nombre||ccs)}</p>
-            <pre class="cpsia-yonaida-text">🚨 *CPSIA Filtro — ${nombre||ccs}*
-Analizados: ${data.total} productos
-Requieren prueba: ${flagged.length}
-Exentos: ${exentos.length}
-
-${flagged.length ? flaggedList : '✅ Ningún producto requiere prueba CPSIA.'}
-
-Generado por KAIA Command</pre>
+            <pre class="cpsia-yonaida-text" id="cpsiaPreviewText"></pre>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn-cpsia-yonaida" id="btnEmailYonaida">
@@ -2285,6 +2278,14 @@ Generado por KAIA Command</pre>
           <div id="cpsiaNotifStatus" style="margin-top:8px;font-size:12px;color:#888"></div>
         </div>
       `
+
+      // Asignar texto preview con textContent (no innerHTML) — evita XSS
+      const previewEl = document.getElementById('cpsiaPreviewText')
+      if (previewEl) previewEl.textContent =
+        `🚨 CPSIA Filtro — ${nombre||ccs}\n` +
+        `Analizados: ${data.total} · Requieren prueba: ${flagged.length} · Exentos: ${exentos.length}\n\n` +
+        (flagged.length ? flagged.map(p => `• ${p.itemName} → ${p.test}`).join('\n') : '✅ Ningún producto requiere prueba CPSIA.') +
+        '\n\nGenerado por KAIA Command'
 
       // Guardar historial en Supabase
       const ccsForHistory = ccs || 'INBOX'
@@ -2312,7 +2313,7 @@ Generado por KAIA Command</pre>
         wBtn.textContent = '⏳ Guardando...'; wBtn.disabled = true
         const wr = await fetch('/api/cpsia-full', {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-kaia-secret': 'kaia-internal-2025' },
           body:    JSON.stringify({ sheetId: data.sheetId, ccs, nombre, products: data.products }),
         })
         const wd = await wr.json()

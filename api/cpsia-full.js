@@ -116,10 +116,26 @@ async function writeCPSIAFiltro(sheetId, ccs, nombre, products, accessToken) {
   return newSheetId
 }
 
-export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+const ALLOWED_ORIGINS = ['https://kaia.sicoben.com', 'https://kaiacommand-s-projects.vercel.app']
+const KAIA_SECRET = process.env.KAIA_API_SECRET
+
+function setCORS(req, res) {
+  const origin = req.headers.origin || ''
+  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin.includes('kaiacommand')
+  res.setHeader('Access-Control-Allow-Origin', allowed ? origin : ALLOWED_ORIGINS[0])
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-kaia-secret')
+}
+
+function checkAuth(req, res) {
+  if (!KAIA_SECRET) return true // no configurado → modo dev, permitir
+  return req.headers['x-kaia-secret'] === KAIA_SECRET
+}
+
+export default async function handler(req, res) {
+  setCORS(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
+  if (!checkAuth(req, res)) return res.status(401).json({ error: 'No autorizado' })
 
   // ── GET: leer sheet y analizar ────────────────────────────────────────────
   if (req.method === 'GET') {
