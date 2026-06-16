@@ -1959,8 +1959,42 @@ const MOCK_CPSIA_LOADS = [
 ]
 
 const cpsiaBlockedMap = {}
-const cpsiaNotifState = {}   // keyed by ccs: { wa: bool, email: bool }
-let currentCpsiaLoad = MOCK_CPSIA_LOADS[0].ccs
+const cpsiaNotifState = {}
+let currentCpsiaLoad  = MOCK_CPSIA_LOADS[0].ccs
+let currentCpsiaType  = 'mock'   // 'mock' | 'saved'
+let CPSIA_SAVED       = []       // análisis guardados en Supabase
+
+async function loadCpsiaFromSupabase() {
+  if (!supabase) return
+  const { data } = await supabase
+    .from('cpsia_analisis')
+    .select('*')
+    .order('creado_en', { ascending: false })
+  if (data?.length) CPSIA_SAVED = data
+}
+
+async function saveCpsiaAnalisis(ccs, nombre, sheetUrl, data) {
+  if (!supabase) return null
+  const { data: saved, error } = await supabase
+    .from('cpsia_analisis')
+    .insert({
+      ccs,
+      nombre,
+      sheet_url:  sheetUrl || null,
+      total:      data.total,
+      flagged:    data.flagged,
+      exentos:    data.exentos,
+      productos:  data.products,
+      notificada: false,
+    })
+    .select()
+    .single()
+  if (!error && saved) {
+    CPSIA_SAVED.unshift(saved)
+    return saved
+  }
+  return null
+}
 
 function getCpsiaNotif(ccs) {
   if (!cpsiaNotifState[ccs]) {
@@ -1971,14 +2005,31 @@ function getCpsiaNotif(ccs) {
 }
 
 function renderCpsiaList(container) {
-  container.innerHTML = MOCK_CPSIA_LOADS.map(load => {
+  const savedCards = CPSIA_SAVED.map(s => {
+    const active = currentCpsiaType === 'saved' && currentCpsiaLoad === s.id
+    const fecha  = new Date(s.creado_en).toLocaleDateString('es-PA', { day:'numeric', month:'short', year:'numeric' })
+    return `
+      <div class="clist-item ${active ? 'clist-item--active' : ''}"
+           data-cpsia-id="${s.id}" data-cpsia-type="saved" role="button" tabindex="0">
+        <div class="clist-top">
+          <span class="ccs-code">${s.ccs}</span>
+          ${s.flagged ? `<span class="clist-badge-pendiente">${s.flagged}</span>` : ''}
+          ${s.notificada ? `<span class="clist-badge-pendiente" style="background:var(--e6)">✓</span>` : ''}
+        </div>
+        <span class="clist-nombre">${s.nombre}</span>
+        <span class="clist-preview">${fecha} · ${s.total} productos</span>
+      </div>
+    `
+  }).join('')
+
+  const mockCards = MOCK_CPSIA_LOADS.map(load => {
     const flagged = load.productos.filter(p => p.aplica).length
-    const active  = load.ccs === currentCpsiaLoad
+    const active  = currentCpsiaType === 'mock' && currentCpsiaLoad === load.ccs
     const notif   = getCpsiaNotif(load.ccs)
     const notifPending = !notif.wa || !notif.email
     return `
       <div class="clist-item ${active ? 'clist-item--active' : ''}"
-           data-cpsia-ccs="${load.ccs}" role="button" tabindex="0">
+           data-cpsia-ccs="${load.ccs}" data-cpsia-type="mock" role="button" tabindex="0">
         <div class="clist-top">
           <span class="ccs-code">${load.ccs}</span>
           ${notifPending ? `<span class="clist-badge-pendiente">notif</span>` :
@@ -1989,9 +2040,81 @@ function renderCpsiaList(container) {
       </div>
     `
   }).join('')
+
+  const totalCount = CPSIA_SAVED.length + MOCK_CPSIA_LOADS.length
+  container.closest('.plist-sidebar').querySelector('.plist-count').textContent =
+    `${totalCount} carga${totalCount !== 1 ? 's' : ''} analizadas`
+
+  container.innerHTML = savedCards + (CPSIA_SAVED.length && MOCK_CPSIA_LOADS.length ? '<div style="height:1px;background:var(--border);margin:8px 0"></div>' : '') + mockCards
 }
 
 function renderCpsiaDetail(container) {
+  // Si es un análisis guardado de Supabase, renderizar con su propio formato
+  if (currentCpsiaType === 'saved') {
+    const s = CPSIA_SAVED.find(a => a.id === currentCpsiaLoad)
+    if (!s) return
+    const fecha    = new Date(s.creado_en).toLocaleString('es-PA', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' })
+    const flagged  = (s.productos || []).filter(p => p.aplica)
+    const exentos  = (s.productos || []).filter(p => p.exento)
+
+    container.innerHTML = `
+      <div class="cpsia-detail">
+        <div class="cpsia-trigger-card">
+          <div class="cpsia-trigger-top">
+            <div>
+              <span class="tpl-editing-label">Análisis guardado</span>
+              <h3 class="cpsia-load-name">${_esc(s.nombre)}</h3>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="ccs-code">${_esc(s.ccs)}</span>
+              <span class="cpsia-notif-badge cpsia-notif-badge--${s.notificada ? 'ok' : 'pend'}">
+                ${s.notificada ? '✓ Notificada' : '⏳ Pendiente notificación'}
+              </span>
+            </div>
+          </div>
+          <div class="cpsia-trigger-meta">
+            <span class="cpsia-meta-item">🕐 ${fecha}</span>
+            ${s.sheet_url ? `<span class="cpsia-meta-item">📊 <a href="${s.sheet_url}" target="_blank" class="cpsia-sheet-link">Ver Google Sheet →</a></span>` : ''}
+          </div>
+        </div>
+
+        <div class="cpsia-summary-bar">
+          <div class="cpsia-summary-stat"><span class="cpsia-summary-num">${s.total}</span><span class="cpsia-summary-label">Analizados</span></div>
+          <div class="cpsia-summary-div"></div>
+          <div class="cpsia-summary-stat"><span class="cpsia-summary-num cpsia-summary-num--alert">${s.flagged}</span><span class="cpsia-summary-label">Requieren prueba</span></div>
+          <div class="cpsia-summary-div"></div>
+          <div class="cpsia-summary-stat"><span class="cpsia-summary-num cpsia-summary-num--ok">${s.exentos}</span><span class="cpsia-summary-label">Exentos</span></div>
+        </div>
+
+        <div class="cpsia-table-wrap">
+          <table class="cpsia-table">
+            <thead><tr>
+              <th class="cpsia-th cpsia-th--num">#</th>
+              <th class="cpsia-th">ITEM NAME</th>
+              <th class="cpsia-th">DESCRIPTION</th>
+              <th class="cpsia-th">CPSIA</th>
+              <th class="cpsia-th">Test requerido</th>
+              <th class="cpsia-th">Norma</th>
+            </tr></thead>
+            <tbody>
+              ${(s.productos || []).map(p => `
+                <tr class="cpsia-tr ${p.aplica ? 'cpsia-tr--flagged' : p.exento ? 'cpsia-tr--exento' : ''}">
+                  <td class="cpsia-td cpsia-td--num">${p.num}</td>
+                  <td class="cpsia-td"><span class="cpsia-prod-nombre">${_esc(p.itemName||'')}</span></td>
+                  <td class="cpsia-td cpsia-td--materials" style="font-size:11px">${_esc(p.description||'—')}</td>
+                  <td class="cpsia-td"><span class="cpsia-aplica-badge cpsia-aplica-badge--${p.aplica?'si':'no'}">${p.aplica?'⚠️ Sí':p.exento?'✓ Exento':'—'}</span></td>
+                  <td class="cpsia-td"><span class="cpsia-test-chip cpsia-test-chip--${p.aplica?'alert':'exempt'}">${_esc(p.test||'')}</span></td>
+                  <td class="cpsia-td" style="font-size:11px;color:#888">${_esc(p.articulo||'')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    return
+  }
+
   const load = MOCK_CPSIA_LOADS.find(l => l.ccs === currentCpsiaLoad)
   if (!load) return
 
@@ -2229,6 +2352,7 @@ function renderCpsiaAnalyzer(container) {
           <span class="cpsia-result-stat cpsia-result-stat--ok">✓ ${exentos.length} exentos</span>
           <button class="btn-cpsia-download" id="btnDownloadCSV">⬇ Descargar CSV</button>
           <button class="btn-cpsia-write" id="btnWriteSheet">📝 Guardar en Google Sheet</button>
+          <button class="btn-cpsia-analyze" id="btnSaveAnalisis" style="background:var(--e1)">💾 Guardar análisis</button>
         </div>
 
         <div class="cpsia-table-wrap" style="margin-top:16px">
@@ -2302,6 +2426,28 @@ function renderCpsiaAnalyzer(container) {
         })
       }
 
+      // Guardar análisis como tarjeta persistente
+      document.getElementById('btnSaveAnalisis').addEventListener('click', async () => {
+        const sBtn = document.getElementById('btnSaveAnalisis')
+        sBtn.textContent = '⏳ Guardando...'; sBtn.disabled = true
+        const saved = await saveCpsiaAnalisis(ccs, nombre || ccs, sheetUrl, data)
+        if (saved) {
+          sBtn.textContent = '✅ Guardado en KAIA'
+          sBtn.style.background = 'var(--e6)'
+          // Actualizar la lista de cargas
+          const listEl = document.getElementById('cpsiaList')
+          if (listEl) renderCpsiaList(listEl)
+          // Navegar a la tarjeta guardada
+          currentCpsiaLoad = saved.id
+          currentCpsiaType = 'saved'
+          const detailEl = document.getElementById('cpsiaDetail')
+          if (detailEl) renderCpsiaDetail(detailEl)
+          renderCpsiaList(listEl)
+        } else {
+          sBtn.textContent = '❌ Error al guardar'; sBtn.disabled = false
+        }
+      })
+
       // Descargar CSV
       document.getElementById('btnDownloadCSV').addEventListener('click', () => {
         downloadCSV(filename, data.products)
@@ -2364,7 +2510,7 @@ function renderCpsiaAnalyzer(container) {
   })
 }
 
-function renderCpsiaPanel() {
+async function renderCpsiaPanel() {
   const panel = document.getElementById('panel-cpsia')
   panel.innerHTML = `
     <div class="panel-hdr">
@@ -2374,7 +2520,7 @@ function renderCpsiaPanel() {
     <div id="cpsiaAnalyzerMount"></div>
     <div class="correos-layout" style="margin-top:16px">
       <aside class="plist-sidebar">
-        <p class="plist-count">${MOCK_CPSIA_LOADS.length} cargas analizadas</p>
+        <p class="plist-count">Cargando...</p>
         <div class="clist-items" id="cpsiaList"></div>
       </aside>
       <div class="correos-thread" id="cpsiaDetail"></div>
@@ -2386,13 +2532,22 @@ function renderCpsiaPanel() {
   const listEl   = document.getElementById('cpsiaList')
   const detailEl = document.getElementById('cpsiaDetail')
 
+  // Cargar análisis guardados de Supabase
+  await loadCpsiaFromSupabase()
+
   renderCpsiaList(listEl)
   renderCpsiaDetail(detailEl)
 
   listEl.addEventListener('click', e => {
-    const item = e.target.closest('[data-cpsia-ccs]')
+    const item = e.target.closest('[data-cpsia-ccs], [data-cpsia-id]')
     if (!item) return
-    currentCpsiaLoad = item.dataset.cpsiaCcs
+    if (item.dataset.cpsiaType === 'saved') {
+      currentCpsiaLoad = item.dataset.cpsiaId
+      currentCpsiaType = 'saved'
+    } else {
+      currentCpsiaLoad = item.dataset.cpsiaCcs
+      currentCpsiaType = 'mock'
+    }
     renderCpsiaList(listEl)
     renderCpsiaDetail(detailEl)
   })
