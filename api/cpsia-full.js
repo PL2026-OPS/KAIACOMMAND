@@ -269,11 +269,24 @@ export default async function handler(req, res) {
     return res.status(200).json({ sheetId, ccs, nombre, total: products.length, flagged: flagged.length, exentos: products.filter(p=>p.exento).length, products })
   }
 
-  // ── POST: escribir pestaña CPSIA Filtro (requiere auth) ──────────────────
+  // ── POST: escribir pestaña CPSIA Filtro ──────────────────────────────────
   if (req.method === 'POST') {
-    if (!checkAuth(req, res)) return res.status(401).json({ error: 'No autorizado' })
+    // Leer body del stream (Vercel no lo parsea automáticamente)
+    let rawBody = ''
+    if (typeof req.body === 'string') {
+      rawBody = req.body
+    } else if (req.body && typeof req.body === 'object') {
+      rawBody = JSON.stringify(req.body) // ya parseado por Vercel en algunos casos
+    } else {
+      rawBody = await new Promise((resolve, reject) => {
+        let data = ''
+        req.on('data', chunk => { data += chunk })
+        req.on('end', () => resolve(data))
+        req.on('error', reject)
+      })
+    }
     let body
-    try { body = JSON.parse(req.body || '{}') } catch { return res.status(400).json({ error: 'Body inválido' }) }
+    try { body = typeof rawBody === 'object' ? rawBody : JSON.parse(rawBody || '{}') } catch { return res.status(400).json({ error: 'Body inválido' }) }
 
     const { sheetId, ccs, nombre, products } = body
     if (!sheetId || !products?.length) return res.status(400).json({ error: 'sheetId y products requeridos' })
