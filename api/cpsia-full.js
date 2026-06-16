@@ -58,62 +58,137 @@ async function getAccessToken(refreshToken) {
 
 async function writeCPSIAFiltro(sheetId, ccs, nombre, products, accessToken) {
   const flagged = products.filter(p => p.aplica)
+  const exentos = products.filter(p => p.exento)
+  const fecha   = new Date().toLocaleDateString('es-PA', { day:'2-digit', month:'short', year:'numeric' })
 
-  // 1. Crear la pestaña "CPSIA Filtro" (si ya existe, la borra y recrea)
+  // ── 1. Obtener sheets existentes ─────────────────────────────────────────
   const ssRes = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
   )
-  const ss = await ssRes.json()
+  const ss     = await ssRes.json()
   const sheets = ss.sheets || []
   const existing = sheets.find(s => s.properties.title === 'CPSIA Filtro')
 
-  const requests = []
-  if (existing) {
-    requests.push({ deleteSheet: { sheetId: existing.properties.sheetId } })
-  }
-  requests.push({ addSheet: { properties: { title: 'CPSIA Filtro' } } })
+  // ── 2. Recrear la pestaña ────────────────────────────────────────────────
+  const setupRequests = []
+  if (existing) setupRequests.push({ deleteSheet: { sheetId: existing.properties.sheetId } })
+  setupRequests.push({ addSheet: { properties: { title: 'CPSIA Filtro', tabColor: { red:0.957, green:0.263, blue:0.212 } } } })
 
-  const batchRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ requests }),
-    }
-  )
-  const batchData = await batchRes.json()
-  const newSheetId = batchData.replies?.find(r => r.addSheet)?.addSheet?.properties?.sheetId
+  const setupRes  = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: setupRequests }),
+  })
+  const setupData = await setupRes.json()
+  const newSid    = setupData.replies?.find(r => r.addSheet)?.addSheet?.properties?.sheetId
 
-  // 2. Escribir datos en la nueva pestaña
-  const headers = ['#', 'ITEM NAME', 'DESCRIPTION', 'APLICA CPSIA', 'TEST REQUERIDO', 'ARTÍCULO / NORMA', 'REGLA']
-  const rows = [
-    [`CPSIA Filtro — ${nombre || ccs} — Generado por KAIA Command`],
-    [],
-    headers,
-    ...products.map((p, i) => [
-      i + 1,
-      p.itemName,
-      p.description,
-      p.aplica ? 'SÍ — REQUIERE PRUEBA' : (p.exento ? 'EXENTO' : 'NO'),
-      p.test,
-      p.articulo,
-      p.regla,
-    ]),
-    [],
-    [`Total analizados: ${products.length}`, '', `Requieren prueba: ${flagged.length}`, '', `Exentos: ${products.filter(p=>p.exento).length}`],
+  // ── 3. Escribir datos ────────────────────────────────────────────────────
+  // Fila 1: título principal
+  // Fila 2: resumen stats
+  // Fila 3: vacía
+  // Fila 4: headers de tabla
+  // Filas 5+: productos
+  // Última: nota de pie
+  const DATA_START_ROW = 4 // 0-indexed fila de headers (fila 5 en Sheets)
+
+  const titleRow   = [`🔍 CPSIA Filtro — ${nombre || ccs}`, '', '', '', '', `Generado: ${fecha} · KAIA Command`]
+  const summaryRow = [
+    `📊 Total analizados: ${products.length}`,
+    `⚠️ Requieren prueba: ${flagged.length}`,
+    `✅ Exentos: ${exentos.length}`,
+    '',
+    flagged.length ? `⚠️ ACCIÓN REQUERIDA — ${flagged.length} producto${flagged.length>1?'s':''} necesita${flagged.length>1?'n':''} prueba CPSIA` : '✅ Sin acciones requeridas',
   ]
+  const headerRow  = ['#', 'ITEM NAME', 'DESCRIPTION', 'APLICA CPSIA', 'TEST REQUERIDO', 'NORMA / ARTÍCULO']
+  const dataRows   = products.map((p, i) => [
+    i + 1,
+    p.itemName   || '',
+    p.description || '',
+    p.aplica ? '⚠️ SÍ — REQUIERE PRUEBA' : (p.exento ? '✅ EXENTO' : '—'),
+    p.test       || '',
+    p.articulo   || '',
+  ])
+  const footerRow = ['', '', '', '', '', `kaia.sicoben.com · KAIA Command · Sicoben Ediciones`]
+
+  const values = [titleRow, summaryRow, [], headerRow, ...dataRows, [], footerRow]
 
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/CPSIA Filtro!A1?valueInputOption=RAW`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/'CPSIA Filtro'!A1?valueInputOption=RAW`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ values: rows }),
+      body: JSON.stringify({ values }),
     }
   )
 
-  return newSheetId
+  // ── 4. Formatear la pestaña ──────────────────────────────────────────────
+  const RED    = { red:0.957, green:0.263, blue:0.212 }  // #F44336
+  const GREEN  = { red:0.298, green:0.686, blue:0.314 }  // #4CAF50
+  const AMBER  = { red:0.961, green:0.651, blue:0.137 }  // #F5A623
+  const DARK   = { red:0.075, green:0.078, blue:0.102 }  // #13141A
+  const WHITE  = { red:1, green:1, blue:1 }
+  const LIGHT_RED   = { red:1, green:0.922, blue:0.922 }
+  const LIGHT_GREEN = { red:0.922, green:0.957, blue:0.922 }
+  const LIGHT_GRAY  = { red:0.957, green:0.957, blue:0.957 }
+
+  function cell(r, c) { return { sheetId: newSid, startRowIndex:r, endRowIndex:r+1, startColumnIndex:c, endColumnIndex:c+1 } }
+  function row(r, c1=0, c2=6) { return { sheetId: newSid, startRowIndex:r, endRowIndex:r+1, startColumnIndex:c1, endColumnIndex:c2 } }
+  function bgColor(range, color) {
+    return { repeatCell: { range, cell: { userEnteredFormat: { backgroundColor: color } }, fields: 'userEnteredFormat.backgroundColor' } }
+  }
+  function textFormat(range, opts) {
+    return { repeatCell: { range, cell: { userEnteredFormat: { textFormat: opts } }, fields: 'userEnteredFormat.textFormat' } }
+  }
+  function merge(r1, r2, c1, c2) {
+    return { mergeCells: { range: { sheetId: newSid, startRowIndex:r1, endRowIndex:r2, startColumnIndex:c1, endColumnIndex:c2 }, mergeType: 'MERGE_ALL' } }
+  }
+
+  const formatRequests = [
+    // Fila título — fondo oscuro, texto blanco, bold, grande
+    bgColor(row(0), DARK),
+    textFormat(row(0), { foregroundColor: WHITE, bold: true, fontSize: 13 }),
+    merge(0, 1, 0, 5),
+
+    // Fila resumen — fondo ámbar si hay flagged, verde si no
+    bgColor(row(1), flagged.length ? { red:1, green:0.953, blue:0.835 } : LIGHT_GREEN),
+    textFormat(row(1), { bold: true, fontSize: 10 }),
+
+    // Fila headers (fila 4, index 3) — fondo gris oscuro, texto blanco, bold
+    bgColor(row(3), { red:0.259, green:0.259, blue:0.259 }),
+    textFormat(row(3), { foregroundColor: WHITE, bold: true }),
+
+    // Columnas anchas
+    { updateDimensionProperties: { range: { sheetId: newSid, dimension: 'COLUMNS', startIndex: 1, endIndex: 2 }, properties: { pixelSize: 220 }, fields: 'pixelSize' } },
+    { updateDimensionProperties: { range: { sheetId: newSid, dimension: 'COLUMNS', startIndex: 2, endIndex: 3 }, properties: { pixelSize: 280 }, fields: 'pixelSize' } },
+    { updateDimensionProperties: { range: { sheetId: newSid, dimension: 'COLUMNS', startIndex: 4, endIndex: 5 }, properties: { pixelSize: 260 }, fields: 'pixelSize' } },
+    { updateDimensionProperties: { range: { sheetId: newSid, dimension: 'COLUMNS', startIndex: 5, endIndex: 6 }, properties: { pixelSize: 220 }, fields: 'pixelSize' } },
+
+    // Freeze primera fila y header
+    { updateSheetProperties: { properties: { sheetId: newSid, gridProperties: { frozenRowCount: 4 } }, fields: 'gridProperties.frozenRowCount' } },
+  ]
+
+  // Colorear filas de datos
+  products.forEach((p, i) => {
+    const rowIdx = DATA_START_ROW + 1 + i // +1 porque hay headerRow
+    if (p.aplica) {
+      formatRequests.push(bgColor(row(rowIdx), LIGHT_RED))
+      formatRequests.push(textFormat({ sheetId: newSid, startRowIndex:rowIdx, endRowIndex:rowIdx+1, startColumnIndex:3, endColumnIndex:4 }, { foregroundColor: RED, bold: true }))
+    } else if (p.exento) {
+      formatRequests.push(bgColor(row(rowIdx), LIGHT_GREEN))
+      formatRequests.push(textFormat({ sheetId: newSid, startRowIndex:rowIdx, endRowIndex:rowIdx+1, startColumnIndex:3, endColumnIndex:4 }, { foregroundColor: GREEN, bold: true }))
+    } else if (i % 2 === 0) {
+      formatRequests.push(bgColor(row(rowIdx), LIGHT_GRAY))
+    }
+  })
+
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ requests: formatRequests }),
+  })
+
+  return newSid
 }
 
 const ALLOWED_ORIGINS = ['https://kaia.sicoben.com', 'https://kaiacommand-s-projects.vercel.app']
