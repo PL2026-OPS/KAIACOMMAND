@@ -9,8 +9,9 @@ function esc(s) {
 }
 
 export default async function handler(req, res) {
+  const PREVIEW_RE = /^https:\/\/[a-z0-9-]+-kaiacommand-s-projects\.vercel\.app$/
   const origin = req.headers.origin || ''
-  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin.includes('kaiacommand')
+  const allowed = ALLOWED_ORIGINS.includes(origin) || PREVIEW_RE.test(origin)
   res.setHeader('Access-Control-Allow-Origin', allowed ? origin : ALLOWED_ORIGINS[0])
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-kaia-secret')

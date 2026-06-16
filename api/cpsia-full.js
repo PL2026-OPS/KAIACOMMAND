@@ -119,9 +119,11 @@ async function writeCPSIAFiltro(sheetId, ccs, nombre, products, accessToken) {
 const ALLOWED_ORIGINS = ['https://kaia.sicoben.com', 'https://kaiacommand-s-projects.vercel.app']
 const KAIA_SECRET = process.env.KAIA_API_SECRET
 
+const PREVIEW_RE = /^https:\/\/[a-z0-9-]+-kaiacommand-s-projects\.vercel\.app$/
+
 function setCORS(req, res) {
   const origin = req.headers.origin || ''
-  const allowed = ALLOWED_ORIGINS.some(o => origin.startsWith(o)) || origin.includes('kaiacommand')
+  const allowed = ALLOWED_ORIGINS.includes(origin) || PREVIEW_RE.test(origin)
   res.setHeader('Access-Control-Allow-Origin', allowed ? origin : ALLOWED_ORIGINS[0])
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-kaia-secret')
@@ -135,9 +137,8 @@ function checkAuth(req, res) {
 export default async function handler(req, res) {
   setCORS(req, res)
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (!checkAuth(req, res)) return res.status(401).json({ error: 'No autorizado' })
 
-  // ── GET: leer sheet y analizar ────────────────────────────────────────────
+  // ── GET: leer sheet y analizar (sin auth — sheet es público) ─────────────
   if (req.method === 'GET') {
     const { url: sheetUrl, ccs = '', nombre = '' } = req.query
     if (!sheetUrl) return res.status(400).json({ error: 'Parámetro url requerido' })
@@ -184,8 +185,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ sheetId, ccs, nombre, total: products.length, flagged: flagged.length, exentos: products.filter(p=>p.exento).length, products })
   }
 
-  // ── POST: escribir pestaña CPSIA Filtro en el sheet ───────────────────────
+  // ── POST: escribir pestaña CPSIA Filtro (requiere auth) ──────────────────
   if (req.method === 'POST') {
+    if (!checkAuth(req, res)) return res.status(401).json({ error: 'No autorizado' })
     let body
     try { body = JSON.parse(req.body || '{}') } catch { return res.status(400).json({ error: 'Body inválido' }) }
 

@@ -2313,7 +2313,7 @@ function renderCpsiaAnalyzer(container) {
         wBtn.textContent = '⏳ Guardando...'; wBtn.disabled = true
         const wr = await fetch('/api/cpsia-full', {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'x-kaia-secret': 'kaia-internal-2025' },
+          headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ sheetId: data.sheetId, ccs, nombre, products: data.products }),
         })
         const wd = await wr.json()
