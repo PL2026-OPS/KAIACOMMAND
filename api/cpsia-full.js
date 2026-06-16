@@ -158,15 +158,24 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Error al leer el sheet: ' + e.message })
     }
 
-    const lines = csvText.split('\n').filter(l => l.trim())
-    if (lines.length < 2) return res.status(422).json({ error: 'Sheet vacío o sin datos.' })
+    const allLines = csvText.split('\n').filter(l => l.trim())
+    if (allLines.length < 2) return res.status(422).json({ error: 'Sheet vacío o sin datos.' })
 
-    const headers  = parseCSVLine(lines[0]).map(h => h.toUpperCase())
-    const findCol  = (...kw) => { for (const k of kw) { const i = headers.findIndex(h => h.includes(k.toUpperCase())); if (i !== -1) return i } return -1 }
+    // Encontrar la fila de headers real — buscar la que contenga 'ITEM NAME' o 'DESCRIPTION'
+    const KEY_COLS = ['ITEM NAME', 'DESCRIPTION', 'PRODUCT', 'TITULO', 'NOMBRE', 'ITEM']
+    let headerIdx = 0
+    for (let i = 0; i < Math.min(5, allLines.length); i++) {
+      const upper = allLines[i].toUpperCase()
+      if (KEY_COLS.some(k => upper.includes(k))) { headerIdx = i; break }
+    }
 
-    const colName  = findCol('ITEM NAME', 'PRODUCT', 'TITULO', 'TITLE', 'NOMBRE', 'NAME')
-    const colDesc  = findCol('DESCRIPTION', 'DESCRIPCION', 'DETAIL', 'DETALLE', 'SPEC', 'CONTENT')
-    const colQty   = findCol('QTY TOTAL', 'QTY PER TITLE', 'QTY', 'QUANTITY', 'CANTIDAD')
+    const lines   = allLines.slice(headerIdx)
+    const headers = parseCSVLine(lines[0]).map(h => h.toUpperCase())
+    const findCol = (...kw) => { for (const k of kw) { const i = headers.findIndex(h => h.includes(k.toUpperCase())); if (i !== -1) return i } return -1 }
+
+    const colName = findCol('ITEM NAME', 'PRODUCT', 'TITULO', 'TITLE', 'NOMBRE', 'NAME')
+    const colDesc = findCol('DESCRIPTION', 'DESCRIPCION', 'DETAIL', 'DETALLE', 'SPEC', 'CONTENT')
+    const colQty  = findCol('QTY TOTAL', 'QTY PER TITLE', 'QTY', 'QUANTITY', 'CANTIDAD')
 
     const products = lines.slice(1)
       .map((line, i) => {
