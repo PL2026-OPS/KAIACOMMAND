@@ -291,6 +291,16 @@ export default async function handler(req, res) {
     const { sheetId, ccs, nombre, products } = body
     if (!sheetId || !products?.length) return res.status(400).json({ error: 'sheetId y products requeridos' })
 
+    // Validaciones de tamaño para prevenir abuso
+    if (products.length > 500) return res.status(400).json({ error: 'Máximo 500 productos por análisis' })
+    const MAX = 500
+    for (const p of products) {
+      if ((p.itemName||'').length > MAX || (p.description||'').length > MAX)
+        return res.status(400).json({ error: 'Texto de producto demasiado largo' })
+    }
+    // Validar sheetId solo contiene caracteres válidos de Google Sheets
+    if (!/^[a-zA-Z0-9_-]+$/.test(sheetId)) return res.status(400).json({ error: 'sheetId inválido' })
+
     const refreshToken = process.env.GOOGLE_SHEETS_REFRESH_TOKEN
     if (!refreshToken) return res.status(500).json({ error: 'GOOGLE_SHEETS_REFRESH_TOKEN no configurado.' })
 
