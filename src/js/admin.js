@@ -2006,18 +2006,20 @@ function getCpsiaNotif(ccs) {
 
 function renderCpsiaList(container) {
   const savedCards = CPSIA_SAVED.map(s => {
-    const active = currentCpsiaType === 'saved' && currentCpsiaLoad === s.id
-    const fecha  = new Date(s.creado_en).toLocaleDateString('es-PA', { day:'numeric', month:'short', year:'numeric' })
+    const active   = currentCpsiaType === 'saved' && currentCpsiaLoad === s.id
+    const fecha    = new Date(s.creado_en).toLocaleDateString('es-PA', { day:'numeric', month:'short', year:'numeric' })
+    const flagged  = Number(s.flagged) || 0
+    const total    = Number(s.total)   || 0
     return `
       <div class="clist-item ${active ? 'clist-item--active' : ''}"
-           data-cpsia-id="${s.id}" data-cpsia-type="saved" role="button" tabindex="0">
+           data-cpsia-id="${_esc(String(s.id))}" data-cpsia-type="saved" role="button" tabindex="0">
         <div class="clist-top">
-          <span class="ccs-code">${s.ccs}</span>
-          ${s.flagged ? `<span class="clist-badge-pendiente">${s.flagged}</span>` : ''}
+          <span class="ccs-code">${_esc(s.ccs)}</span>
+          ${flagged ? `<span class="clist-badge-pendiente">${flagged}</span>` : ''}
           ${s.notificada ? `<span class="clist-badge-pendiente" style="background:var(--e6)">✓</span>` : ''}
         </div>
-        <span class="clist-nombre">${s.nombre}</span>
-        <span class="clist-preview">${fecha} · ${s.total} productos</span>
+        <span class="clist-nombre">${_esc(s.nombre)}</span>
+        <span class="clist-preview">${_esc(fecha)} · ${total} productos</span>
       </div>
     `
   }).join('')
@@ -2074,16 +2076,16 @@ function renderCpsiaDetail(container) {
           </div>
           <div class="cpsia-trigger-meta">
             <span class="cpsia-meta-item">🕐 ${fecha}</span>
-            ${s.sheet_url ? `<span class="cpsia-meta-item">📊 <a href="${s.sheet_url}" target="_blank" class="cpsia-sheet-link">Ver Google Sheet →</a></span>` : ''}
+            ${(() => { try { const u = new URL(s.sheet_url||''); return ['http:','https:'].includes(u.protocol) ? `<span class="cpsia-meta-item">📊 <a href="${_esc(u.href)}" target="_blank" rel="noopener noreferrer" class="cpsia-sheet-link">Ver Google Sheet →</a></span>` : '' } catch { return '' } })()}
           </div>
         </div>
 
         <div class="cpsia-summary-bar">
-          <div class="cpsia-summary-stat"><span class="cpsia-summary-num">${s.total}</span><span class="cpsia-summary-label">Analizados</span></div>
+          <div class="cpsia-summary-stat"><span class="cpsia-summary-num">${Number(s.total)||0}</span><span class="cpsia-summary-label">Analizados</span></div>
           <div class="cpsia-summary-div"></div>
-          <div class="cpsia-summary-stat"><span class="cpsia-summary-num cpsia-summary-num--alert">${s.flagged}</span><span class="cpsia-summary-label">Requieren prueba</span></div>
+          <div class="cpsia-summary-stat"><span class="cpsia-summary-num cpsia-summary-num--alert">${Number(s.flagged)||0}</span><span class="cpsia-summary-label">Requieren prueba</span></div>
           <div class="cpsia-summary-div"></div>
-          <div class="cpsia-summary-stat"><span class="cpsia-summary-num cpsia-summary-num--ok">${s.exentos}</span><span class="cpsia-summary-label">Exentos</span></div>
+          <div class="cpsia-summary-stat"><span class="cpsia-summary-num cpsia-summary-num--ok">${Number(s.exentos)||0}</span><span class="cpsia-summary-label">Exentos</span></div>
         </div>
 
         <div class="cpsia-table-wrap">
