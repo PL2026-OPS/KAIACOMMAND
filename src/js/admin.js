@@ -575,6 +575,8 @@ const MASIVO_TRIGGER = {
 // Masivo: solo WhatsApp (el correo 1-a-1 vive en la pestaña Correos)
 let masivoCanal = 'wa'
 let masivoContainer = null
+let CPSIA_PENDING_NOTIF   = null  // set desde CPSIA panel para pre-llenar Masivo
+let CPSIA_PENDING_COMPOSE = null  // set desde CPSIA panel para abrir compose en Correos
 
 function masivoIncluye(canal) {
   return masivoCanal === 'ambos' || masivoCanal === canal
@@ -681,18 +683,40 @@ function renderMasivoInto(container) {
   if (!container) return
   masivoContainer = container
 
+  // ── CPSIA mode: viene del panel de análisis CPSIA ────────────────
+  const cpsia = CPSIA_PENDING_NOTIF
+  CPSIA_PENDING_NOTIF = null   // consumir inmediatamente
+
   const etapa    = ETAPAS[MASIVO_TRIGGER.etapa_idx]
-  const waText   = `📦 Nueva carga en ${etapa.nombre}\n\n*${MASIVO_TRIGGER.nombre}* (${MASIVO_TRIGGER.ccs}) avanzó a ${etapa.id} ${etapa.nombre}.\nETA estimada: ${MASIVO_TRIGGER.eta}.\n\nConsulta el detalle en el portal:\n→ kaia.sicoben.com/portal`
+  const maxLen   = cpsia ? 800 : 400
+  const waText   = cpsia
+    ? cpsia.waText
+    : `📦 Nueva carga en ${etapa.nombre}\n\n*${MASIVO_TRIGGER.nombre}* (${MASIVO_TRIGGER.ccs}) avanzó a ${etapa.id} ${etapa.nombre}.\nETA estimada: ${MASIVO_TRIGGER.eta}.\n\nConsulta el detalle en el portal:\n→ kaia.sicoben.com/portal`
   const subjText = `📦 Cargas en proceso de fabricación — Semana del 8 dic 2025`
   const bodyText = `Hola equipo de Ventas,\n\nATENCIÓN: Las siguientes cargas están en proceso de fabricación esta semana.\n\n• ${MASIVO_TRIGGER.ccs} — ${MASIVO_TRIGGER.nombre} (${etapa.id} ${etapa.nombre} · ETA ${MASIVO_TRIGGER.eta})\n• 2025C-FCL — Colección Navidad 2025 (E6 Fabricación · ETA 15 Feb 2026)\n\nPara conocer el detalle de cada carga, ingresen al portal:\n→ kaia.sicoben.com/portal\n\nCualquier duda sobre algún título específico me avisan.\n\nSaludos,\nPaulet`
 
-  // Destinatarios visibles según el canal elegido
-  const destVisibles = DESTINATARIOS.filter(d =>
-    masivoCanal === 'ambos' ? true : d.canales.includes(masivoCanal)
-  )
+  // Destinatarios: en modo CPSIA solo Yonaida
+  const destVisibles = cpsia
+    ? DESTINATARIOS.filter(d => d.id === 'yonaida')
+    : DESTINATARIOS.filter(d =>
+        masivoCanal === 'ambos' ? true : d.canales.includes(masivoCanal)
+      )
 
-  container.innerHTML = `
-    <!-- Trigger banner -->
+  const bannerHtml = cpsia ? `
+    <div class="trigger-banner" style="--tc:var(--e3)">
+      <div class="trigger-left">
+        <span class="trigger-bolt">🚨</span>
+        <div>
+          <p class="trigger-title">Análisis CPSIA — notificación lista para enviar</p>
+          <p class="trigger-desc">
+            <strong>${_esc(cpsia.nombre)}</strong> (${_esc(cpsia.ccs)})
+            — revisa el mensaje y presiona Enviar.
+          </p>
+        </div>
+      </div>
+      <span class="trigger-chip" style="--c:var(--e3)">⚠️ CPSIA</span>
+    </div>
+  ` : `
     <div class="trigger-banner" style="--tc:${etapa.color}">
       <div class="trigger-left">
         <span class="trigger-bolt">⚡</span>
@@ -706,10 +730,14 @@ function renderMasivoInto(container) {
       </div>
       <span class="trigger-chip" style="--c:${etapa.color}">${etapa.id} ${etapa.nombre}</span>
     </div>
+  `
+
+  container.innerHTML = `
+    ${bannerHtml}
 
     <!-- Destinatarios -->
     <div class="masivo-card">
-      <p class="masivo-card-label">Destinatarios · con WhatsApp</p>
+      <p class="masivo-card-label">${cpsia ? 'Destinatario · CPSIA' : 'Destinatarios · con WhatsApp'}</p>
       <div class="recipients-list">
         ${destVisibles.map(d => `
           <label class="recipient-row" for="dest-${d.id}">
@@ -740,9 +768,9 @@ function renderMasivoInto(container) {
             <p class="editor-hint">Mensaje corto · Wassenger</p>
           </div>
         </div>
-        <textarea class="editor-textarea" id="waEditor" rows="8" maxlength="400">${waText}</textarea>
+        <textarea class="editor-textarea" id="waEditor" rows="8" maxlength="${maxLen}">${_esc(waText)}</textarea>
         <div class="editor-footer">
-          <span class="char-counter" id="waCounter">${waText.length}/400</span>
+          <span class="char-counter" id="waCounter">${waText.length}/${maxLen}</span>
         </div>
       </div>` : ''}
 
@@ -1163,7 +1191,35 @@ function renderCommConversaciones(body) {
   const clistItems = document.getElementById('clistItems')
   const threadDiv  = document.getElementById('correosThread')
   renderClist(clistItems)
-  renderThread(threadDiv)
+
+  // ── CPSIA: abrir compose pre-llenado ────────────────────────────
+  const cpsiaPending = CPSIA_PENDING_COMPOSE
+  CPSIA_PENDING_COMPOSE = null
+
+  if (cpsiaPending) {
+    threadDiv.innerHTML = `
+      <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+        <div style="padding:10px 14px;background:#FFF8EC;border-left:3px solid var(--e3);border-radius:6px">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--e3)">🚨 Notificación CPSIA</span>
+          <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin:4px 0 0">${_esc(cpsiaPending.carga)}</p>
+        </div>
+        ${composeHTML(null)}
+      </div>
+    `
+    const paraInput    = threadDiv.querySelector('.reply-field-input')
+    const subjectInput = threadDiv.querySelector('.reply-subject-input')
+    const ta           = threadDiv.querySelector('.reply-textarea')
+    if (paraInput)    paraInput.value    = cpsiaPending.to
+    if (subjectInput) subjectInput.value = cpsiaPending.asunto
+    if (ta)           ta.value           = cpsiaPending.cuerpo
+    wireCompose(threadDiv, cpsiaPending.ccs)
+    threadDiv.querySelector('.btn-reply-cancel')?.addEventListener('click', () => {
+      renderThread(threadDiv)
+    })
+  } else {
+    renderThread(threadDiv)
+  }
+
   clistItems.addEventListener('click', e => {
     const item = e.target.closest('[data-ccs]')
     if (!item) return
@@ -2312,7 +2368,7 @@ function renderCpsiaAnalyzer(container) {
         <input class="cpsia-sheet-input" id="cpsiaCcsInput" type="text" style="flex:1;max-width:160px"
           placeholder="CCS (ej: 2025B-LCL)" />
         <input class="cpsia-sheet-input" id="cpsiaNombreInput" type="text" style="flex:1;max-width:200px"
-          placeholder="Nombre de la carga" />
+          placeholder="Nombre de la carga *" required />
         <button class="btn-cpsia-analyze" id="btnAnalyzeSheet">🔍 Analizar</button>
       </div>
       <div id="cpsiaAnalyzeResult"></div>
@@ -2398,7 +2454,10 @@ function renderCpsiaAnalyzer(container) {
               ✉️ Enviar a Yonaida por Correo
             </button>
             <button class="btn-cpsia-yonaida" id="btnWaYonaida" style="background:var(--e7)">
-              💬 Enviar a Yonaida por WhatsApp
+              💬 WhatsApp directo
+            </button>
+            <button class="btn-cpsia-yonaida" id="btnCpsiaComm" style="background:var(--e4);font-weight:600">
+              📢 Preparar y enviar a Yonaida →
             </button>
           </div>
           <div id="cpsiaNotifStatus" style="margin-top:8px;font-size:12px;color:#888"></div>
@@ -2431,8 +2490,14 @@ function renderCpsiaAnalyzer(container) {
       // Guardar análisis como tarjeta persistente
       document.getElementById('btnSaveAnalisis').addEventListener('click', async () => {
         const sBtn = document.getElementById('btnSaveAnalisis')
+        const nombreFinal = nombre || ccs
+        if (!nombreFinal) {
+          alert('Por favor ingresa el nombre de la carga o el código CCS antes de guardar.')
+          document.getElementById('cpsiaNombreInput').focus()
+          return
+        }
         sBtn.textContent = '⏳ Guardando...'; sBtn.disabled = true
-        const saved = await saveCpsiaAnalisis(ccs, nombre || ccs, sheetUrl, data)
+        const saved = await saveCpsiaAnalisis(ccs, nombreFinal, sheetUrl, data)
         if (saved) {
           sBtn.textContent = '✅ Guardado en KAIA'
           sBtn.style.background = 'var(--e6)'
@@ -2502,6 +2567,30 @@ function renderCpsiaAnalyzer(container) {
           flaggedList + '\n\nVer detalle en KAIA: kaia.sicoben.com/admin'
         )
         window.open(`https://wa.me/+50761112233?text=${msg}`, '_blank')
+      })
+
+      // Ir a Comunicación → Correos con compose CPSIA pre-cargado
+      document.getElementById('btnCpsiaComm').addEventListener('click', () => {
+        const asunto = `CPSIA — Carga ${nombre||ccs}`
+        const cuerpo =
+          `Hola Yonaida,\n\n` +
+          `El sistema identificó que ${flagged.length} producto${flagged.length!==1?'s':''} de la carga *${nombre||ccs}* requiere${flagged.length!==1?'n':''} prueba CPSIA:\n\n` +
+          flaggedList.replace(/•/g, '-') +
+          `\n\nPor favor coordina la documentación de tu lado.` +
+          (sheetUrl ? `\n\nVer pestaña CPSIA Filtro: ${sheetUrl}` : '') +
+          `\n\nVer carga en KAIA: kaia.sicoben.com/admin\n\nSaludos,\nPaulet`
+
+        CPSIA_PENDING_COMPOSE = {
+          ccs:    ccs || '',
+          carga:  nombre || ccs || '',
+          to:     'logistica@sicobenediciones.com',
+          asunto,
+          cuerpo,
+        }
+        commTab = 'conversaciones'
+        const commPanel = document.getElementById('panel-comunicacion')
+        if (commPanel) commPanel.removeAttribute('data-rendered')
+        navigate('comunicacion')
       })
 
     } catch (err) {
