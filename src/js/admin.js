@@ -2920,14 +2920,9 @@ function drawAlertasPanel(panel, alertas) {
    PANEL 8 — MONDAY SYNC
    ═══════════════════════════════════════ */
 
+// Tablero real de producción Sicoben — actualizado Jun 2026
 const MOCK_MONDAY_BOARDS = [
-  { etapa_idx:0, board_id:'18398325293', items:8,  ultima_sync:'09 Jun, 14:32', estado:'ok' },
-  { etapa_idx:1, board_id:'18398330011', items:5,  ultima_sync:'09 Jun, 14:32', estado:'ok' },
-  { etapa_idx:2, board_id:'18398330342', items:3,  ultima_sync:'09 Jun, 14:31', estado:'ok' },
-  { etapa_idx:3, board_id:'18398331388', items:4,  ultima_sync:'09 Jun, 14:32', estado:'ok' },
-  { etapa_idx:4, board_id:'18398347387', items:2,  ultima_sync:'09 Jun, 14:30', estado:'ok' },
-  { etapa_idx:5, board_id:'18398348560', items:6,  ultima_sync:'09 Jun, 14:32', estado:'ok' },
-  { etapa_idx:6, board_id:'18398349721', items:3,  ultima_sync:'09 Jun, 13:55', estado:'error' },
+  { board_id:'18419071056', nombre:'Tablero de Producción Sicoben', items:'—', ultima_sync:'Pendiente', estado:'pendiente' },
 ]
 
 const MOCK_DETECTED_BOARDS = [
@@ -2942,38 +2937,41 @@ function renderMondayPanel() {
   panel.innerHTML = `
     <div class="panel-hdr">
       <h2 class="panel-title">Monday sync</h2>
-      <p class="panel-subtitle">Estado de los 7 tableros · Workspace 14162882</p>
+      <p class="panel-subtitle">Tablero de producción Sicoben · Workspace sicobenediciones</p>
     </div>
 
     <div class="msync-status-bar">
       <div class="msync-ws-left">
-        <span class="live-badge"><span class="live-dot"></span> Conectado</span>
-        <span class="msync-ws-id">Workspace · <span class="ccs-code">14162882</span></span>
+        <span class="live-badge" style="--ld:var(--e3)"><span class="live-dot"></span> Pendiente conexión</span>
+        <span class="msync-ws-id">Workspace · <span class="ccs-code">sicobenediciones.monday.com</span></span>
       </div>
       <div class="msync-ws-right">
-        <span class="msync-last-sync" id="msyncLastSync">Última sync: hoy 14:32</span>
+        <span class="msync-last-sync" id="msyncLastSync">Requiere MONDAY_API_TOKEN</span>
         <button class="btn-msync-now" id="btnMsyncNow">↻ Sincronizar ahora</button>
       </div>
     </div>
 
-    <div class="msync-section-hdr">Tableros conectados</div>
+    <div class="msync-section-hdr">Tablero conectado</div>
 
     <div class="msync-boards-list">
       ${MOCK_MONDAY_BOARDS.map(b => {
-        const etapa = ETAPAS[b.etapa_idx]
-        const isError = b.estado === 'error'
+        const isPendiente = b.estado === 'pendiente'
         return `
-          <div class="msync-board-row ${isError ? 'msync-board-row--error' : ''}">
-            <span class="plist-stage-chip" style="--c:${etapa.color}">${etapa.id}</span>
+          <div class="msync-board-row">
+            <span class="plist-stage-chip" style="--c:#7B4CA8">📋</span>
             <div class="msync-board-info">
-              <span class="msync-board-name">${etapa.nombre.toUpperCase()}</span>
+              <span class="msync-board-name">${b.nombre || 'Tablero Sicoben'}</span>
               <span class="msync-board-id ccs-code">${b.board_id}</span>
             </div>
-            <span class="msync-board-items">${b.items} items</span>
+            <span class="msync-board-items">${b.items} cargas</span>
             <span class="msync-board-sync">${b.ultima_sync}</span>
-            <span class="msync-board-status ${isError ? 'msync-status--error' : 'msync-status--ok'}">
-              ${isError ? '⚠ Error de sync' : '✓ OK'}
+            <span class="msync-board-status ${isPendiente ? 'msync-status--error' : 'msync-status--ok'}">
+              ${isPendiente ? '⏳ Sin conectar' : '✓ OK'}
             </span>
+            <a href="https://sicobenediciones.monday.com/boards/18419071056" target="_blank" rel="noopener noreferrer"
+               class="btn-msync-activate" style="text-decoration:none;font-size:12px">
+              Ver en Monday →
+            </a>
           </div>`
       }).join('')}
     </div>

@@ -8,14 +8,10 @@ router = APIRouter()
 # POST /monday/updates         → post a confirmed email update to a Monday item
 # POST /monday/webhooks        → receive Monday.com webhook events
 
-BOARD_IDS = {
-    "E1": 18398325293,
-    "E2": 18398330011,
-    "E3": 18398330342,
-    "E4": 18398331388,
-    "E5": 18398347387,
-    "E6": 18398348560,
-    "E7": 18398349721,
-}
+# Tablero real de producción Sicoben — actualizado Jun 2026
+BOARD_ID = 18419071056
+
+# IDs anteriores (referencia histórica — ya no en uso)
+# BOARD_IDS = { "E1": 18398325293, "E2": 18398330011, ... }
 
 WORKSPACE_ID = 14162882

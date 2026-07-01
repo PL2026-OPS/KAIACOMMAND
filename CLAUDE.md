@@ -58,17 +58,17 @@ Every load has a CCS code (e.g., `2025C-FCL`). This is the only stable identifie
 
 ### Monday.com Boards
 
-Workspace: `14162882`. Use GraphQL API v2 for all operations.
+Workspace: `sicobenediciones.monday.com`. Use GraphQL API v2 for all operations.
 
-| Stage | Name | Board ID |
-|-------|------|----------|
-| E1 | ORIGEN | `18398325293` |
-| E2 | COTIZACIONES | `18398330011` |
-| E3 | PROFORMA | `18398330342` |
-| E4 | DISEÑO | `18398331388` |
-| E5 | COMERCIAL | `18398347387` |
-| E6 | FABRICACIÓN | `18398348560` |
-| E7 | TRÁFICO | `18398349721` |
+**Tablero real de producción (actualizado Jun 2026):**
+
+| Board ID | URL |
+|----------|-----|
+| `18419071056` | https://sicobenediciones.monday.com/boards/18419071056 |
+
+Este es el único tablero a conectar. Las etapas E1-E7 están como grupos/columnas dentro de este tablero, no como tableros separados.
+
+> Los board IDs anteriores (18398325293, etc.) eran del workspace de prueba — ya no aplican.
 
 ### External Service Constraints
 
