@@ -2723,9 +2723,9 @@ let alertFilter = 'todos'
 
 // ── Genera alertas reales desde Supabase ──────────────────────────────────
 async function loadAlertasReales() {
-  const alertas = [...MOCK_ALERTAS] // fallback con las mock
+  const alertas = []
 
-  if (!supabase) return alertas
+  if (!supabase) return [...MOCK_ALERTAS]
 
   try {
     // 1. Campos sin completar por carga
@@ -2815,7 +2815,11 @@ async function loadAlertasReales() {
 
   } catch (e) {
     console.warn('[KAIA] Error cargando alertas reales:', e.message)
+    return [...MOCK_ALERTAS] // fallback si falla Supabase
   }
+
+  // Si no hay alertas reales, mostrar los ejemplos mock
+  if (!alertas.length) return [...MOCK_ALERTAS]
 
   // Deduplicar por id y ordenar: rojo primero
   const uniq = Object.values(Object.fromEntries(alertas.map(a => [a.id, a])))
@@ -3557,30 +3561,7 @@ async function initFromSupabase() {
       MOCK_CORREOS.splice(0, MOCK_CORREOS.length, ...correos)
     }
 
-    // ── Alertas ──────────────────────────────────────────────────
-    const { data: alertas, error: eAlertas } = await supabase
-      .from('alertas')
-      .select('*')
-      .eq('resuelta', false)
-      .order('creado_en', { ascending: false })
-
-    if (!eAlertas && alertas?.length) {
-      const mapped = alertas.map(a => ({
-        id:      a.id,
-        semaforo: a.semaforo,
-        icon:    a.icono,
-        tipo:    a.tipo,
-        ccs:     a.ccs,
-        nombre:  MOCK_CARGAS.find(c => c.ccs === a.ccs)?.nombre ?? a.ccs,
-        hace:    (() => {
-          const diff = Date.now() - new Date(a.creado_en)
-          const h = Math.floor(diff / 3600000)
-          return h < 1 ? 'hace menos de 1h' : `hace ${h}h`
-        })(),
-        msg:     a.mensaje,
-      }))
-      MOCK_ALERTAS.splice(0, MOCK_ALERTAS.length, ...mapped)
-    }
+    // Alertas se generan dinámicamente en loadAlertasReales() — no cargar seed aquí
 
     // ── Plantillas ───────────────────────────────────────────────
     const { data: plantillas, error: ePlantillas } = await supabase
