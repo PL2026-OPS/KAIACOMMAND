@@ -30,6 +30,31 @@ function analyzeProduct(itemName, description) {
   return { aplica: true, exento: false, test: 'Revisar manualmente — producto infantil', articulo: 'CPSIA §101 general', regla: 'manual' }
 }
 
+// Parser CSV completo que maneja celdas con saltos de línea internos
+function parseCSVFull(text) {
+  const records = []
+  let field = '', inQ = false, row = []
+  const t = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i]
+    if (ch === '"') {
+      if (inQ && t[i+1] === '"') { field += '"'; i++ }
+      else inQ = !inQ
+    } else if (ch === ',' && !inQ) {
+      row.push(field.trim()); field = ''
+    } else if (ch === '\n' && !inQ) {
+      row.push(field.trim()); field = ''
+      if (row.some(c => c)) records.push(row)
+      row = []
+    } else {
+      field += ch
+    }
+  }
+  if (field || row.length) { row.push(field.trim()); if (row.some(c=>c)) records.push(row) }
+  return records
+}
+
 function parseCSVLine(line) {
   const cells = []; let cur = '', inQ = false
   for (const ch of line) {
@@ -233,41 +258,56 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Error al leer el sheet: ' + e.message })
     }
 
-    const allLines = csvText.split('\n').filter(l => l.trim())
-    if (allLines.length < 2) return res.status(422).json({ error: 'Sheet vacío o sin datos.' })
+    // Parsear CSV completo respetando celdas multilinea
+    const allRecords = parseCSVFull(csvText)
+    if (allRecords.length < 2) return res.status(422).json({ error: 'Sheet vacío o sin datos.' })
 
-    // Encontrar la fila de headers real — buscar la que contenga 'ITEM NAME' o 'DESCRIPTION'
-    const KEY_COLS = ['ITEM NAME', 'DESCRIPTION', 'PRODUCT', 'TITULO', 'NOMBRE', 'ITEM']
+    // Encontrar fila de headers (buscar BOOK TITLE, ITEM NAME, SPECS, DESCRIPTION)
+    const KEY_COLS = ['BOOK TITLE', 'ITEM NAME', 'SPECS', 'DESCRIPTION', 'SPECIFICATION']
     let headerIdx = 0
-    for (let i = 0; i < Math.min(5, allLines.length); i++) {
-      const upper = allLines[i].toUpperCase()
+    for (let i = 0; i < Math.min(5, allRecords.length); i++) {
+      const upper = allRecords[i].join(' ').toUpperCase()
       if (KEY_COLS.some(k => upper.includes(k))) { headerIdx = i; break }
     }
 
-    const lines   = allLines.slice(headerIdx)
-    const headers = parseCSVLine(lines[0]).map(h => h.toUpperCase())
+    const headers = allRecords[headerIdx].map(h => h.toUpperCase())
     const findCol = (...kw) => { for (const k of kw) { const i = headers.findIndex(h => h.includes(k.toUpperCase())); if (i !== -1) return i } return -1 }
 
-    // Solo leer ITEM NAME y DESCRIPTION — únicos campos para análisis CPSIA
-    const colName = findCol('ITEM NAME', 'BOOK TITLE', 'TITLE', 'NOMBRE', 'NAME')
-    const colDesc = findCol('DESCRIPTION', 'SPECIFICATION', 'SPECS', 'SPEC', 'CONTENT')
+    // Solo leer BOOK TITLE/ITEM NAME y SPECS/DESCRIPTION
+    const colName = findCol('BOOK TITLE', 'ITEM NAME', 'TITLE', 'NOMBRE', 'NAME')
+    const colDesc = findCol('SPECS', 'SPECIFICATION', 'DESCRIPTION', 'DESCRIPCION', 'SPEC', 'CONTENT')
     const colQty  = findCol('QTY TOTAL', 'QTY PER TITLE', 'QTY', 'QUANTITY', 'CANTIDAD')
 
     if (colName < 0) return res.status(422).json({
-      error: `No se encontró columna de nombre de producto. Columnas detectadas: ${headers.slice(0,8).join(', ')}`
+      error: `No se encontró columna de título. Columnas detectadas: ${headers.slice(0,8).join(', ')}`
     })
 
-    const products = lines.slice(1)
-      .map((line, i) => {
-        const row  = parseCSVLine(line)
-        const name = (row[colName] || '').trim()
-        const desc = colDesc >= 0 ? (row[colDesc] || '').trim() : ''
-        // Ignorar filas sin nombre de producto o que sean solo números
-        if (!name || /^\d+$/.test(name)) return null
-        const analysis = analyzeProduct(name, desc)
-        return { num: i+1, itemName: name, description: desc, qty: parseInt(row[colQty] || '0') || 0, ...analysis }
-      })
-      .filter(Boolean)
+    // Agrupar filas: si BOOK TITLE está vacío, las specs pertenecen al libro anterior
+    const books = []
+    let currentBook = null
+
+    for (const row of allRecords.slice(headerIdx + 1)) {
+      const name = (row[colName] || '').trim()
+      const desc = colDesc >= 0 ? (row[colDesc] || '').trim() : ''
+      const qty  = parseInt(row[colQty] || '0') || 0
+
+      if (name && !/^\d+$/.test(name)) {
+        // Nueva entrada con nombre de libro
+        currentBook = { itemName: name, description: desc, qty }
+        books.push(currentBook)
+      } else if (currentBook && desc) {
+        // Specs adicionales del libro anterior — agregar al bloque
+        currentBook.description += (currentBook.description ? '\n' : '') + desc
+      }
+    }
+
+    const products = books.map((b, i) => ({
+      num: i + 1,
+      itemName: b.itemName,
+      description: b.description,
+      qty: b.qty,
+      ...analyzeProduct(b.itemName, b.description),
+    }))
 
     if (!products.length) return res.status(422).json({ error: 'No se encontraron productos. Verifica que la primera fila tenga encabezados.' })
 
