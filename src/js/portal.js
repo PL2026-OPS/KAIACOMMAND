@@ -180,14 +180,14 @@ function renderLoadCard(c) {
 
       ${hasSheet || hasCached ? `
         <div class="load-productos-section">
-          <button class="load-productos-toggle" data-ccs="${c.ccs}"
-                  data-sheet="${c.sheet_url || ''}">
+          <button class="load-productos-toggle" data-ccs="${esc(c.ccs)}"
+                  data-sheet="${esc(c.sheet_url || '')}">
             <span class="load-productos-arrow">▸</span>
             <span class="load-productos-label">
               ${hasCached ? `Ver productos (${productosCache[c.ccs].length})` : 'Ver productos'}
             </span>
           </button>
-          <div class="load-productos-list" id="prod-${c.ccs}" hidden>
+          <div class="load-productos-list" id="prod-${esc(c.ccs)}" hidden>
             ${hasCached ? renderProductList(productosCache[c.ccs]) : '<p class="load-prod-loading">Cargando...</p>'}
           </div>
         </div>
