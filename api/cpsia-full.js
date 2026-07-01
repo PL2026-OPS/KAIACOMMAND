@@ -248,8 +248,9 @@ export default async function handler(req, res) {
     const headers = parseCSVLine(lines[0]).map(h => h.toUpperCase())
     const findCol = (...kw) => { for (const k of kw) { const i = headers.findIndex(h => h.includes(k.toUpperCase())); if (i !== -1) return i } return -1 }
 
-    const colName = findCol('ITEM NAME', 'PRODUCT', 'TITULO', 'TITLE', 'NOMBRE', 'NAME')
-    const colDesc = findCol('DESCRIPTION', 'DESCRIPCION', 'DETAIL', 'DETALLE', 'SPEC', 'CONTENT')
+    // Solo leer Book Title y Specifications — son los únicos campos relevantes para CPSIA
+    const colName = findCol('BOOK TITLE', 'ITEM NAME', 'TITULO', 'TITLE', 'NOMBRE', 'NAME', 'PRODUCT')
+    const colDesc = findCol('SPECIFICATION', 'SPECS', 'SPEC', 'DESCRIPTION', 'DESCRIPCION', 'CONTENT', 'DETAIL')
     const colQty  = findCol('QTY TOTAL', 'QTY PER TITLE', 'QTY', 'QUANTITY', 'CANTIDAD')
 
     const products = lines.slice(1)
