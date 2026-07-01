@@ -2730,77 +2730,192 @@ let MOCK_ALERTAS = [
 const resolvedAlerts = new Set()
 let alertFilter = 'todos'
 
-function renderAlertasPanel() {
-  const panel = document.getElementById('panel-alertas')
+// ── Genera alertas reales desde Supabase ──────────────────────────────────
+async function loadAlertasReales() {
+  const alertas = [...MOCK_ALERTAS] // fallback con las mock
 
-  const counts = {
-    rojo:     MOCK_ALERTAS.filter(a => a.semaforo === 'rojo'     && !resolvedAlerts.has(a.id)).length,
-    amarillo: MOCK_ALERTAS.filter(a => a.semaforo === 'amarillo' && !resolvedAlerts.has(a.id)).length,
-    verde:    MOCK_ALERTAS.filter(a => a.semaforo === 'verde'    && !resolvedAlerts.has(a.id)).length,
+  if (!supabase) return alertas
+
+  try {
+    // 1. Campos sin completar por carga
+    const { data: campos } = await supabase
+      .from('campos_etapa')
+      .select('ccs, campo_nombre, etapa_idx, cargas(nombre)')
+      .eq('completado', false)
+
+    if (campos?.length) {
+      // Agrupar por carga
+      const porCarga = {}
+      campos.forEach(c => {
+        if (!porCarga[c.ccs]) porCarga[c.ccs] = { nombre: c.cargas?.nombre || c.ccs, campos: [], etapa_idx: c.etapa_idx }
+        porCarga[c.ccs].campos.push(c.campo_nombre)
+      })
+      Object.entries(porCarga).forEach(([ccs, d]) => {
+        alertas.push({
+          id:       `campo-${ccs}`,
+          semaforo: 'rojo',
+          icon:     '⚠️',
+          tipo:     'Campos faltantes',
+          ccs,
+          nombre:   d.nombre,
+          hace:     'Pendiente',
+          accion:   `Falta completar: ${d.campos.slice(0, 2).join(', ')}${d.campos.length > 2 ? ` +${d.campos.length - 2} más` : ''}`,
+        })
+      })
+    }
+
+    // 2. Correos enviados sin respuesta hace 3+ días
+    const hace3dias = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    const { data: enviados } = await supabase
+      .from('mensajes_correo')
+      .select('id, ccs, asunto, fecha_mensaje, hilo_id, cargas(nombre)')
+      .eq('tipo', 'enviado')
+      .eq('confirmado', false)
+      .lt('fecha_mensaje', hace3dias)
+
+    if (enviados?.length) {
+      for (const msg of enviados) {
+        // Ver si hay respuesta posterior en el mismo hilo
+        const { data: respuesta } = await supabase
+          .from('mensajes_correo')
+          .select('id')
+          .eq('hilo_id', msg.hilo_id)
+          .eq('tipo', 'recibido')
+          .gt('fecha_mensaje', msg.fecha_mensaje)
+          .limit(1)
+
+        if (!respuesta?.length) {
+          const diasSinRespuesta = Math.floor((Date.now() - new Date(msg.fecha_mensaje)) / 86400000)
+          alertas.push({
+            id:       `correo-${msg.id}`,
+            semaforo: diasSinRespuesta >= 5 ? 'rojo' : 'amarillo',
+            icon:     '📧',
+            tipo:     'Sin respuesta',
+            ccs:      msg.ccs,
+            nombre:   msg.cargas?.nombre || msg.ccs,
+            hace:     `hace ${diasSinRespuesta} día${diasSinRespuesta !== 1 ? 's' : ''}`,
+            accion:   `Correo sin respuesta hace ${diasSinRespuesta} días — "${(msg.asunto || '').slice(0, 50)}"`,
+          })
+        }
+      }
+    }
+
+    // 3. Cargas con CPSIA pendiente
+    const { data: cargasCpsia } = await supabase
+      .from('cargas')
+      .select('ccs, nombre, etapa_idx')
+      .eq('cpsia_pendiente', true)
+      .eq('activa', true)
+
+    if (cargasCpsia?.length) {
+      cargasCpsia.forEach(c => {
+        alertas.push({
+          id:       `cpsia-${c.ccs}`,
+          semaforo: 'amarillo',
+          icon:     '🔬',
+          tipo:     'CPSIA',
+          ccs:      c.ccs,
+          nombre:   c.nombre,
+          hace:     'Pendiente',
+          accion:   'Análisis CPSIA requerido — proforma recibida sin procesar',
+        })
+      })
+    }
+
+  } catch (e) {
+    console.warn('[KAIA] Error cargando alertas reales:', e.message)
   }
 
-  const visible = alertFilter === 'todos'
-    ? MOCK_ALERTAS
-    : MOCK_ALERTAS.filter(a => a.semaforo === alertFilter)
+  // Deduplicar por id y ordenar: rojo primero
+  const uniq = Object.values(Object.fromEntries(alertas.map(a => [a.id, a])))
+  return uniq.sort((a, b) => {
+    const ord = { rojo: 0, amarillo: 1, verde: 2 }
+    return (ord[a.semaforo] ?? 2) - (ord[b.semaforo] ?? 2)
+  })
+}
 
-  const SCOLOR = { rojo: 'var(--e4)', amarillo: 'var(--e3)', verde: 'var(--e6)' }
+async function renderAlertasPanel() {
+  const panel = document.getElementById('panel-alertas')
+  panel.innerHTML = `
+    <div class="panel-hdr">
+      <h2 class="panel-title">Alertas</h2>
+      <p class="panel-subtitle">Cargando alertas...</p>
+    </div>
+    <div class="alertas-list" id="alertasList" style="opacity:0.4">
+      ${MOCK_ALERTAS.slice(0,2).map(a => `<div class="alerta-card alerta-card--${a.semaforo}" style="pointer-events:none">
+        <span class="alerta-dot" style="--ac:var(--e4)"></span>
+        <span class="alerta-icon">${a.icon}</span>
+        <div class="alerta-body"><p class="alerta-nombre-big">${_esc(a.nombre)}</p><p class="alerta-accion">Cargando...</p></div>
+      </div>`).join('')}
+    </div>
+  `
+
+  const alertas = await loadAlertasReales()
+  drawAlertasPanel(panel, alertas)
+}
+
+function drawAlertasPanel(panel, alertas) {
+  const activas = alertas.filter(a => !resolvedAlerts.has(a.id))
+  const counts  = {
+    rojo:     activas.filter(a => a.semaforo === 'rojo').length,
+    amarillo: activas.filter(a => a.semaforo === 'amarillo').length,
+    verde:    activas.filter(a => a.semaforo === 'verde').length,
+  }
+  const visible = alertFilter === 'todos' ? alertas : alertas.filter(a => a.semaforo === alertFilter)
+  const SCOLOR  = { rojo: 'var(--e4)', amarillo: 'var(--e3)', verde: 'var(--e6)' }
 
   panel.innerHTML = `
     <div class="panel-hdr">
       <h2 class="panel-title">Alertas</h2>
-      <p class="panel-subtitle">Semáforo de eventos activos · ${counts.rojo + counts.amarillo + counts.verde} sin resolver</p>
+      <p class="panel-subtitle">${counts.rojo + counts.amarillo + counts.verde} sin resolver</p>
     </div>
 
     <div class="alertas-stats">
-      <button class="alerta-filter-chip ${alertFilter==='todos'?'alerta-filter-chip--active':''}"
-              data-filter="todos">Todas · ${MOCK_ALERTAS.length}</button>
-      <button class="alerta-filter-chip alerta-filter-chip--rojo ${alertFilter==='rojo'?'alerta-filter-chip--active':''}"
-              data-filter="rojo">🔴 Críticas · ${counts.rojo}</button>
-      <button class="alerta-filter-chip alerta-filter-chip--amarillo ${alertFilter==='amarillo'?'alerta-filter-chip--active':''}"
-              data-filter="amarillo">🟡 Atención · ${counts.amarillo}</button>
-      <button class="alerta-filter-chip alerta-filter-chip--verde ${alertFilter==='verde'?'alerta-filter-chip--active':''}"
-              data-filter="verde">🟢 Info · ${counts.verde}</button>
+      <button class="alerta-filter-chip ${alertFilter==='todos'?'alerta-filter-chip--active':''}" data-filter="todos">Todas · ${alertas.length}</button>
+      <button class="alerta-filter-chip alerta-filter-chip--rojo ${alertFilter==='rojo'?'alerta-filter-chip--active':''}" data-filter="rojo">🔴 Críticas · ${counts.rojo}</button>
+      <button class="alerta-filter-chip alerta-filter-chip--amarillo ${alertFilter==='amarillo'?'alerta-filter-chip--active':''}" data-filter="amarillo">🟡 Atención · ${counts.amarillo}</button>
+      <button class="alerta-filter-chip alerta-filter-chip--verde ${alertFilter==='verde'?'alerta-filter-chip--active':''}" data-filter="verde">🟢 Info · ${counts.verde}</button>
     </div>
 
     <div class="alertas-list">
-      ${visible.map(a => {
-        const resuelta = resolvedAlerts.has(a.id)
-        return `
-          <div class="alerta-card alerta-card--${a.semaforo} ${resuelta ? 'alerta-card--resuelta' : ''}">
-            <span class="alerta-dot" style="--ac:${SCOLOR[a.semaforo]}"></span>
-            <span class="alerta-icon">${a.icon}</span>
-            <div class="alerta-body">
-              <p class="alerta-msg">${a.msg}</p>
-              <div class="alerta-meta">
-                <span class="ccs-code">${a.ccs}</span>
-                <span class="alerta-nombre">${a.nombre}</span>
-                <span class="alerta-tipo">${a.tipo}</span>
-                <span class="alerta-hace">${a.hace}</span>
+      ${visible.length === 0 ? `<p class="empty-state">✅ No hay alertas activas.</p>` :
+        visible.map(a => {
+          const resuelta = resolvedAlerts.has(a.id)
+          const etapa    = ETAPAS[a.etapa_idx]
+          return `
+            <div class="alerta-card alerta-card--${a.semaforo} ${resuelta ? 'alerta-card--resuelta' : ''}">
+              <span class="alerta-dot" style="--ac:${SCOLOR[a.semaforo]}"></span>
+              <span class="alerta-icon">${a.icon}</span>
+              <div class="alerta-body">
+                <p class="alerta-nombre-big">${_esc(a.nombre)}</p>
+                <p class="alerta-accion">→ ${_esc(a.accion || a.msg || '')}</p>
+                <div class="alerta-meta">
+                  <span class="ccs-code">${_esc(a.ccs)}</span>
+                  ${etapa ? `<span class="plist-stage-chip" style="--c:${etapa.color}">${etapa.id}</span>` : ''}
+                  <span class="alerta-tipo">${_esc(a.tipo)}</span>
+                  <span class="alerta-hace">${_esc(a.hace)}</span>
+                </div>
               </div>
-            </div>
-            <div class="alerta-actions">
-              <button class="btn-alerta-ver" data-ccs="${a.ccs}">Ver carga</button>
-              <button class="btn-alerta-resolve ${resuelta ? 'btn-alerta-resolve--done' : ''}"
-                      data-id="${a.id}">
-                ${resuelta ? '✓ Resuelta' : 'Resolver'}
-              </button>
-            </div>
-          </div>`
-      }).join('')}
+              <div class="alerta-actions">
+                <button class="btn-alerta-ver" data-ccs="${_esc(a.ccs)}">Ver carga</button>
+                <button class="btn-alerta-resolve ${resuelta ? 'btn-alerta-resolve--done' : ''}" data-id="${_esc(a.id)}">
+                  ${resuelta ? '✓ Resuelta' : 'Resolver'}
+                </button>
+              </div>
+            </div>`
+        }).join('')}
     </div>
   `
 
   panel.querySelectorAll('[data-filter]').forEach(btn =>
-    btn.addEventListener('click', () => { alertFilter = btn.dataset.filter; renderAlertasPanel() })
+    btn.addEventListener('click', () => { alertFilter = btn.dataset.filter; drawAlertasPanel(panel, alertas) })
   )
-
   panel.querySelectorAll('.btn-alerta-resolve').forEach(btn =>
     btn.addEventListener('click', () => {
       resolvedAlerts.has(btn.dataset.id) ? resolvedAlerts.delete(btn.dataset.id) : resolvedAlerts.add(btn.dataset.id)
-      renderAlertasPanel()
+      drawAlertasPanel(panel, alertas)
     })
   )
-
   panel.querySelectorAll('.btn-alerta-ver').forEach(btn =>
     btn.addEventListener('click', () => showDetalle(btn.dataset.ccs))
   )

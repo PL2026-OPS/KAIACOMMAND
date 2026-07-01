@@ -2986,6 +2986,22 @@ mark.tpl-var-resolved {
 
 .alerta-body { flex: 1; min-width: 0; }
 
+.alerta-nombre-big {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 3px;
+}
+.alerta-accion {
+  font-size: 13px;
+  color: rgba(0,0,0,0.65);
+  margin: 0 0 6px;
+  font-weight: 500;
+}
+.alerta-card--resuelta .alerta-nombre-big,
+.alerta-card--resuelta .alerta-accion { opacity: 0.45; }
+
 .alerta-msg {
   font-size: 14px;
   color: #111;
