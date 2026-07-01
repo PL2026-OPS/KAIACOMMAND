@@ -2710,21 +2710,12 @@ async function renderCpsiaPanel() {
    ═══════════════════════════════ */
 
 let MOCK_ALERTAS = [
-  { id:'al1', semaforo:'rojo',     icon:'🚨', tipo:'Escalada',
-    ccs:'2025C-FCL', nombre:'Colección Navidad 2025', hace:'hace 1h',
-    msg:'Ningbo Jumbo no respondió tras 2 reintentos — acción manual requerida' },
-  { id:'al2', semaforo:'rojo',     icon:'⚠️', tipo:'Carencia',
-    ccs:'2025C-FCL', nombre:'Colección Navidad 2025', hace:'hace 3h',
-    msg:'Avanzó a E6 Fabricación sin completar: Reporte de avance semanal' },
-  { id:'al3', semaforo:'amarillo', icon:'📦', tipo:'Inactividad',
-    ccs:'2025D-AIR', nombre:'Urgente Diciembre KADI',  hace:'hace 6h',
-    msg:'E7 Tráfico lleva 6 días sin actualización en Monday' },
-  { id:'al4', semaforo:'amarillo', icon:'📋', tipo:'Reintento',
-    ccs:'2025B-LCL', nombre:'Libros Educativos Q1 2026', hace:'hace 8h',
-    msg:'Reintento #1 enviado a Mumbai Book Printers — sin respuesta en 48h' },
-  { id:'al5', semaforo:'verde',    icon:'🔔', tipo:'Correo nuevo',
-    ccs:'2025B-LCL', nombre:'Libros Educativos Q1 2026', hace:'hace 12h',
-    msg:'Nuevo correo de Priya Sharma · Proforma Invoice — pendiente de confirmar en Monday' },
+  { id:'al1', semaforo:'rojo',     icon:'⚠️', tipo:'Campos faltantes',
+    ccs:'2025C-FCL', nombre:'Colección Navidad 2025', hace:'hace 2h',
+    accion:'Falta completar: Fecha estimada de finalización' },
+  { id:'al2', semaforo:'amarillo', icon:'📧', tipo:'Sin respuesta',
+    ccs:'2025B-LCL', nombre:'Libros Educativos Q1 2026', hace:'hace 3 días',
+    accion:'Correo sin respuesta hace 3 días — "Proforma Request"' },
 ]
 
 const resolvedAlerts = new Set()
