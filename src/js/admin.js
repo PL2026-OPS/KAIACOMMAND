@@ -1190,41 +1190,125 @@ function renderCommConversaciones(body) {
   `
   const clistItems = document.getElementById('clistItems')
   const threadDiv  = document.getElementById('correosThread')
-  renderClist(clistItems)
 
-  // ── CPSIA: abrir compose pre-llenado ────────────────────────────
+  // ── CPSIA mode: mostrar banner de selección de hilo ─────────────
   const cpsiaPending = CPSIA_PENDING_COMPOSE
-  CPSIA_PENDING_COMPOSE = null
 
   if (cpsiaPending) {
-    threadDiv.innerHTML = `
-      <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
-        <div style="padding:10px 14px;background:#FFF8EC;border-left:3px solid var(--e3);border-radius:6px">
-          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--e3)">🚨 Notificación CPSIA</span>
-          <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin:4px 0 0">${_esc(cpsiaPending.carga)}</p>
+    // Banner encima de los hilos
+    const banner = document.createElement('div')
+    banner.className = 'cpsia-comm-banner'
+    banner.innerHTML = `
+      <div class="cpsia-comm-banner-body">
+        <span class="cpsia-comm-banner-icon">⚠️</span>
+        <div>
+          <p class="cpsia-comm-banner-title">CPSIA — ${_esc(cpsiaPending.carga)}</p>
+          <p class="cpsia-comm-banner-hint">Elige una conversación para asociar esta alerta</p>
         </div>
-        ${composeHTML(null)}
+        <button class="cpsia-comm-banner-close" id="btnCpsiaBannerClose">✕</button>
       </div>
     `
-    const paraInput    = threadDiv.querySelector('.reply-field-input')
-    const subjectInput = threadDiv.querySelector('.reply-subject-input')
-    const ta           = threadDiv.querySelector('.reply-textarea')
-    if (paraInput)    paraInput.value    = cpsiaPending.to
-    if (subjectInput) subjectInput.value = cpsiaPending.asunto
-    if (ta)           ta.value           = cpsiaPending.cuerpo
-    wireCompose(threadDiv, cpsiaPending.ccs)
-    threadDiv.querySelector('.btn-reply-cancel')?.addEventListener('click', () => {
+    clistItems.parentElement.insertBefore(banner, clistItems)
+
+    document.getElementById('btnCpsiaBannerClose').addEventListener('click', () => {
+      CPSIA_PENDING_COMPOSE = null
+      banner.remove()
+      renderClist(clistItems)
       renderThread(threadDiv)
     })
-  } else {
-    renderThread(threadDiv)
-  }
 
-  clistItems.addEventListener('click', e => {
-    const item = e.target.closest('[data-ccs]')
-    if (!item) return
-    currentCcs = item.dataset.ccs
+    renderClist(clistItems, true) // modo CPSIA — muestra botón "Asociar →"
+
+    // Render panel derecho: instrucciones
+    threadDiv.innerHTML = `
+      <div class="cpsia-comm-select-hint">
+        <span style="font-size:36px">👈</span>
+        <p>Selecciona una conversación de la lista para asociar la alerta CPSIA<br>
+        o crea un hilo nuevo con el botón "+".</p>
+        <button class="btn-cpsia-analyze" id="btnCpsiaNewThread" style="margin-top:12px">
+          + Crear conversación nueva para ${_esc(cpsiaPending.carga)}
+        </button>
+      </div>
+    `
+
+    document.getElementById('btnCpsiaNewThread')?.addEventListener('click', () => {
+      // Crear hilo temporal y abrir compose
+      const tmpCcs = cpsiaPending.ccs || 'CPSIA-' + Date.now()
+      if (!MOCK_CORREOS.find(t => t.ccs === tmpCcs)) {
+        MOCK_CORREOS.unshift({
+          ccs: tmpCcs, nombre: cpsiaPending.carga, etapa_idx: 2, mensajes: [],
+        })
+      }
+      currentCcs = tmpCcs
+      CPSIA_PENDING_COMPOSE = null
+      banner.remove()
+      renderClist(clistItems)
+      abrirComposeCPSIA(threadDiv, cpsiaPending)
+    })
+
+    // Click en hilo → asociar CPSIA
+    clistItems.addEventListener('click', e => {
+      const item = e.target.closest('[data-ccs]')
+      if (!item) return
+      if (e.target.closest('.btn-asociar-cpsia')) {
+        // Botón "Asociar →" específico
+        currentCcs = item.dataset.ccs
+        CPSIA_PENDING_COMPOSE = null
+        banner.remove()
+        renderClist(clistItems)
+        abrirComposeCPSIA(threadDiv, cpsiaPending)
+      } else {
+        // Click normal — mostrar hilo con opción de asociar al final
+        currentCcs = item.dataset.ccs
+        renderClist(clistItems, true)
+        renderThread(threadDiv)
+        // Añadir botón asociar al final del thread
+        const asociarBtn = document.createElement('div')
+        asociarBtn.style.cssText = 'padding:16px;border-top:1px solid var(--border)'
+        asociarBtn.innerHTML = `<button class="btn-cpsia-yonaida" style="width:100%" id="btnAsociarAqui">
+          ✉️ Asociar alerta CPSIA aquí y redactar →
+        </button>`
+        threadDiv.appendChild(asociarBtn)
+        document.getElementById('btnAsociarAqui')?.addEventListener('click', () => {
+          CPSIA_PENDING_COMPOSE = null
+          banner.remove()
+          abrirComposeCPSIA(threadDiv, cpsiaPending)
+        })
+      }
+    })
+
+  } else {
     renderClist(clistItems)
+    renderThread(threadDiv)
+
+    clistItems.addEventListener('click', e => {
+      const item = e.target.closest('[data-ccs]')
+      if (!item) return
+      currentCcs = item.dataset.ccs
+      renderClist(clistItems)
+      renderThread(threadDiv)
+    })
+  }
+}
+
+function abrirComposeCPSIA(threadDiv, cpsiaPending) {
+  threadDiv.innerHTML = `
+    <div style="padding:20px;display:flex;flex-direction:column;gap:12px">
+      <div style="padding:10px 14px;background:#FFF8EC;border-left:3px solid var(--e3);border-radius:6px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--e3)">🚨 Alerta CPSIA</span>
+        <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin:4px 0 0">${_esc(cpsiaPending.carga)}</p>
+      </div>
+      ${composeHTML(null)}
+    </div>
+  `
+  const paraInput    = threadDiv.querySelector('.reply-field-input')
+  const subjectInput = threadDiv.querySelector('.reply-subject-input')
+  const ta           = threadDiv.querySelector('.reply-textarea')
+  if (paraInput)    paraInput.value    = cpsiaPending.to
+  if (subjectInput) subjectInput.value = cpsiaPending.asunto
+  if (ta)           ta.value           = cpsiaPending.cuerpo
+  wireCompose(threadDiv, cpsiaPending.ccs)
+  threadDiv.querySelector('.btn-reply-cancel')?.addEventListener('click', () => {
     renderThread(threadDiv)
   })
 }
@@ -1506,14 +1590,14 @@ let currentCcs = MOCK_CORREOS[0].ccs
 
 const _esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
 
-function renderClist(container) {
+function renderClist(container, cpsiaMode = false) {
   container.innerHTML = MOCK_CORREOS.map(t => {
     const pendientes = t.mensajes.filter(m => m.tipo === 'recibido' && !m.confirmado && !confirmedMsgs.has(m.id)).length
     const ultimo     = t.mensajes[t.mensajes.length - 1]
     const etapa      = ETAPAS[t.etapa_idx]
     const isInbox    = t.ccs === 'INBOX'
-    const iniciales  = _esc(ultimo.de).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    const fechaCorta = (ultimo.fecha || '').split(',')[0]
+    const iniciales  = ultimo ? _esc(ultimo.de).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '??'
+    const fechaCorta = ultimo ? (ultimo.fecha || '').split(',')[0] : ''
 
     return `
       <div class="crm-thread-item ${t.ccs === currentCcs ? 'crm-thread-item--active' : ''} ${pendientes ? 'crm-thread-item--unread' : ''}"
@@ -1521,17 +1605,18 @@ function renderClist(container) {
         <div class="crm-thread-avatar">${iniciales}</div>
         <div class="crm-thread-content">
           <div class="crm-thread-row1">
-            <span class="crm-thread-sender">${_esc(ultimo.de)}</span>
+            <span class="crm-thread-sender">${ultimo ? _esc(ultimo.de) : _esc(t.nombre)}</span>
             <span class="crm-thread-time">${_esc(fechaCorta)}</span>
           </div>
           <div class="crm-thread-row2">
-            <span class="crm-thread-subject">${_esc(ultimo.asunto)}</span>
+            <span class="crm-thread-subject">${ultimo ? _esc(ultimo.asunto) : 'Sin mensajes'}</span>
             ${pendientes ? `<span class="crm-thread-badge">${pendientes}</span>` : ''}
           </div>
           <div class="crm-thread-row3">
             ${isInbox
               ? `<span class="crm-tag crm-tag--inbox">📥 Sin clasificar</span>`
               : `<span class="crm-tag" style="--tc:${etapa?.color || '#888'}">${_esc(t.ccs)}</span>`}
+            ${cpsiaMode ? `<button class="btn-asociar-cpsia" title="Asociar alerta CPSIA a esta conversación">Asociar →</button>` : ''}
           </div>
         </div>
       </div>
@@ -2450,14 +2535,11 @@ function renderCpsiaAnalyzer(container) {
             <pre class="cpsia-yonaida-text" id="cpsiaPreviewText"></pre>
           </div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn-cpsia-yonaida" id="btnEmailYonaida">
+            <button class="btn-cpsia-yonaida" id="btnCpsiaComm">
               ✉️ Enviar a Yonaida por Correo
             </button>
             <button class="btn-cpsia-yonaida" id="btnWaYonaida" style="background:var(--e7)">
-              💬 WhatsApp directo
-            </button>
-            <button class="btn-cpsia-yonaida" id="btnCpsiaComm" style="background:var(--e4);font-weight:600">
-              📢 Preparar y enviar a Yonaida →
+              💬 WhatsApp
             </button>
           </div>
           <div id="cpsiaNotifStatus" style="margin-top:8px;font-size:12px;color:#888"></div>
@@ -2535,27 +2617,6 @@ function renderCpsiaAnalyzer(container) {
           wBtn.style.background = 'var(--e6)'
         } else {
           wBtn.textContent = '❌ ' + (wd.error || 'Error'); wBtn.disabled = false
-        }
-      })
-
-      // Email a Yonaida
-      document.getElementById('btnEmailYonaida').addEventListener('click', async () => {
-        const eBtn = document.getElementById('btnEmailYonaida')
-        const status = document.getElementById('cpsiaNotifStatus')
-        eBtn.textContent = '⏳ Enviando correo...'; eBtn.disabled = true
-        const er = await fetch('/api/send-yonaida', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ ccs, nombre, products: data.products, sheetUrl }),
-        })
-        const ed = await er.json()
-        if (er.ok) {
-          eBtn.textContent = '✅ Correo enviado a Yonaida'
-          eBtn.style.background = 'var(--e6)'
-          status.textContent = 'Enviado a logistica@sicobenediciones.com'
-        } else {
-          eBtn.textContent = '❌ Error al enviar'; eBtn.disabled = false
-          status.textContent = ed.error || 'Error desconocido'
         }
       })
 
