@@ -3130,11 +3130,53 @@ function renderAgentesPanel() {
                 ${a.preview.map(m => `
                   <div class="agente-msg agente-msg--${m.rol}">
                     <span class="agente-msg-tag">${m.rol === 'user' ? 'Tú' : 'KAIA'}</span>
-                    <span class="agente-msg-text">${m.texto}</span>
+                    <span class="agente-msg-text">${_esc(m.texto)}</span>
                   </div>`).join('')}
               </div>
               <p class="agente-chat-hint">El chat está disponible directamente en el ${a.id === 'admin' ? 'dashboard admin' : 'portal de colaboradores'}</p>
             </div>
+
+            ${a.id === 'portal' ? `
+            <div class="agente-v2-section">
+              <label class="agente-v2-label">Preguntas frecuentes por rol</label>
+              <p class="agente-save-hint" style="margin-bottom:10px">Estas preguntas están configuradas en el agente. Los colaboradores las verán como sugerencias.</p>
+              <div class="faq-roles">
+                <div class="faq-role-group">
+                  <p class="faq-role-label">🚢 Yonaida — Tráfico</p>
+                  <div class="faq-chips">
+                    <span class="faq-chip">¿Cuándo llega la carga?</span>
+                    <span class="faq-chip">¿Está en tránsito?</span>
+                    <span class="faq-chip">¿Cuántos días faltan?</span>
+                    <span class="faq-chip">¿El embarque está confirmado?</span>
+                  </div>
+                </div>
+                <div class="faq-role-group">
+                  <p class="faq-role-label">🛒 Aixa / Orlando — Ventas</p>
+                  <div class="faq-chips">
+                    <span class="faq-chip">¿Qué productos vienen en la carga?</span>
+                    <span class="faq-chip">¿La ETA sigue firme?</span>
+                    <span class="faq-chip">¿Cuáles cargas están activas?</span>
+                  </div>
+                </div>
+                <div class="faq-role-group">
+                  <p class="faq-role-label">🎨 Ruth / María — Diseño</p>
+                  <div class="faq-chips">
+                    <span class="faq-chip">¿Qué cargas necesitan artes?</span>
+                    <span class="faq-chip">¿En qué etapa está la carga?</span>
+                  </div>
+                </div>
+                <div class="faq-role-group faq-role-group--restricted">
+                  <p class="faq-role-label">🚫 El agente NUNCA responde</p>
+                  <div class="faq-chips">
+                    <span class="faq-chip faq-chip--blocked">Nombre del proveedor</span>
+                    <span class="faq-chip faq-chip--blocked">Número de BL</span>
+                    <span class="faq-chip faq-chip--blocked">Agente aduanal</span>
+                    <span class="faq-chip faq-chip--blocked">Costos / precios</span>
+                    <span class="faq-chip faq-chip--blocked">Número de contenedor</span>
+                  </div>
+                </div>
+              </div>
+            </div>` : ''}
 
           </div>`
       }).join('')}

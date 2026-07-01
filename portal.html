@@ -121,6 +121,31 @@
     </div>
   </div>
 
+  <!-- ── Chat flotante KAIA ── -->
+  <button class="chat-fab" id="chatFab" aria-label="Abrir asistente KAIA">
+    <span class="chat-fab-icon">🤖</span>
+    <span class="chat-fab-label">KAIA</span>
+  </button>
+
+  <div class="chat-drawer" id="chatDrawer" hidden>
+    <div class="chat-drawer-header">
+      <div class="chat-drawer-title">
+        <span class="chat-drawer-avatar">🤖</span>
+        <div>
+          <p class="chat-drawer-name">KAIA · Asistente</p>
+          <p class="chat-drawer-sub">Portal de Colaboradores</p>
+        </div>
+      </div>
+      <button class="chat-close" id="chatClose" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" id="chatInput" type="text"
+             placeholder="Pregunta sobre una carga..." autocomplete="off" />
+      <button class="chat-send" id="chatSend">→</button>
+    </div>
+  </div>
+
   <script type="module" src="/src/js/portal.js"></script>
 </body>
 </html>

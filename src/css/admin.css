@@ -3517,6 +3517,26 @@ mark.tpl-var-resolved {
   margin: 0;
 }
 
+/* ── FAQ templates ── */
+.faq-roles { display: flex; flex-direction: column; gap: 14px; }
+.faq-role-group {}
+.faq-role-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: rgba(0,0,0,0.45); margin: 0 0 6px;
+}
+.faq-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.faq-chip {
+  padding: 5px 12px; background: rgba(42,189,168,0.1);
+  color: var(--e7); border: 1px solid rgba(42,189,168,0.2);
+  border-radius: 14px; font-size: 12px; font-weight: 500;
+}
+.faq-role-group--restricted .faq-role-label { color: var(--e4); }
+.faq-chip--blocked {
+  background: rgba(232,53,122,0.08); color: var(--e4);
+  border-color: rgba(232,53,122,0.2); text-decoration: line-through;
+  opacity: 0.7;
+}
+
 /* ═══════════════════════════════
    CONFIGURACIÓN PANEL
    ═══════════════════════════════ */
