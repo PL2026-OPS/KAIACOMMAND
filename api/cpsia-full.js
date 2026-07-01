@@ -19,15 +19,41 @@ const CPSIA_RULES = [
              && !/metal|plastic|vinyl|sticker|crayon|paint|ink|tinta|magneto|foam|tela|fabric|clay|slime/i.test(t) },
 ]
 
+// Specs que indican SOLO producción en papel/impresión (sin materiales adicionales)
+const PAPER_SPECS = /\b(gsm|gramos|pp\b|pages|páginas|paper|bond|couché|coated|board|cartón|carton|cover|binding|laminat|hardbound|softbound|hardcover|softcover|perfect.?bound|saddle|stitch|offset|cmyk|pantone|pms|4\/4|4\+4|full.?colo[u]?r|extent|tapa|encuadernac|impres|print)\b/i
+
+// Materiales que SÍ activan CPSIA aunque sea un libro
+const INTERACTIVE_MATERIALS = /sticker|vinyl|vinilo|toy|juguete|game\b|kit\b|craft|puzzle|magnet|metal|plastic|plástico|crayon|marker|plumón|foam|espuma|fabric|tela|relleno|actividad|manualidad|clay|arcilla|slime|paint\b|pintura/i
+
 function analyzeProduct(itemName, description) {
-  const text = `${itemName} ${description}`.toLowerCase()
-  const exento = CPSIA_RULES.find(r => r.exempt && r.check(text))
+  const text    = `${itemName} ${description}`
+  const textLow = text.toLowerCase()
+
+  // 1. Primero buscar reglas de exención explícita
+  const exento = CPSIA_RULES.find(r => r.exempt && r.check(textLow))
   if (exento) return { aplica: false, exento: true, test: exento.test, articulo: exento.art, regla: exento.id }
+
+  // 2. Buscar reglas que activan prueba
   for (const rule of CPSIA_RULES.filter(r => !r.exempt)) {
-    if (rule.check(text)) return { aplica: true, exento: false, test: rule.test, articulo: rule.art, regla: rule.id }
+    if (rule.check(textLow)) return { aplica: true, exento: false, test: rule.test, articulo: rule.art, regla: rule.id }
   }
-  // Cualquier producto infantil no identificado → revisar
-  return { aplica: true, exento: false, test: 'Revisar manualmente — producto infantil', articulo: 'CPSIA §101 general', regla: 'manual' }
+
+  // 3. Fallback inteligente:
+  //    Si las specs describen solo papel/impresión y NO hay materiales interactivos → EXENTO
+  const soloImpresion = PAPER_SPECS.test(description) && !INTERACTIVE_MATERIALS.test(textLow)
+  if (soloImpresion) {
+    return { aplica: false, exento: true, test: 'EXENTO — libro impreso solo papel/cartón', articulo: '16 CFR 1501 exemption', regla: 'papel' }
+  }
+
+  //    Si el nombre sugiere libro de lectura/cuento sin materiales extra → EXENTO
+  const esLibroLectura = /\b(cuento|story|reading|lectura|coloring\s+book|libro\s+de\s+lectura|picture\s+book|board\s+book|novela|storybook)\b/i.test(text)
+    && !INTERACTIVE_MATERIALS.test(textLow)
+  if (esLibroLectura) {
+    return { aplica: false, exento: true, test: 'EXENTO — libro de lectura/cuento (solo papel)', articulo: '16 CFR 1501 exemption', regla: 'papel' }
+  }
+
+  //    Si no hay información suficiente en las specs → marcar para revisión manual (no necesariamente aplica)
+  return { aplica: false, exento: false, test: 'Sin specs suficientes — revisar manualmente', articulo: 'CPSIA §101 general', regla: 'manual' }
 }
 
 // Parser CSV completo que maneja celdas con saltos de línea internos
