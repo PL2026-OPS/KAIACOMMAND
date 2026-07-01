@@ -248,17 +248,22 @@ export default async function handler(req, res) {
     const headers = parseCSVLine(lines[0]).map(h => h.toUpperCase())
     const findCol = (...kw) => { for (const k of kw) { const i = headers.findIndex(h => h.includes(k.toUpperCase())); if (i !== -1) return i } return -1 }
 
-    // Solo leer Book Title y Specifications — son los únicos campos relevantes para CPSIA
-    const colName = findCol('BOOK TITLE', 'ITEM NAME', 'TITULO', 'TITLE', 'NOMBRE', 'NAME', 'PRODUCT')
-    const colDesc = findCol('SPECIFICATION', 'SPECS', 'SPEC', 'DESCRIPTION', 'DESCRIPCION', 'CONTENT', 'DETAIL')
+    // Solo leer ITEM NAME y DESCRIPTION — únicos campos para análisis CPSIA
+    const colName = findCol('ITEM NAME', 'BOOK TITLE', 'TITLE', 'NOMBRE', 'NAME')
+    const colDesc = findCol('DESCRIPTION', 'SPECIFICATION', 'SPECS', 'SPEC', 'CONTENT')
     const colQty  = findCol('QTY TOTAL', 'QTY PER TITLE', 'QTY', 'QUANTITY', 'CANTIDAD')
+
+    if (colName < 0) return res.status(422).json({
+      error: `No se encontró columna de nombre de producto. Columnas detectadas: ${headers.slice(0,8).join(', ')}`
+    })
 
     const products = lines.slice(1)
       .map((line, i) => {
         const row  = parseCSVLine(line)
-        const name = colName >= 0 ? row[colName] : row.find(c => c && !/^\d+$/.test(c)) || ''
-        const desc = colDesc >= 0 ? row[colDesc] : ''
-        if (!name) return null
+        const name = (row[colName] || '').trim()
+        const desc = colDesc >= 0 ? (row[colDesc] || '').trim() : ''
+        // Ignorar filas sin nombre de producto o que sean solo números
+        if (!name || /^\d+$/.test(name)) return null
         const analysis = analyzeProduct(name, desc)
         return { num: i+1, itemName: name, description: desc, qty: parseInt(row[colQty] || '0') || 0, ...analysis }
       })
