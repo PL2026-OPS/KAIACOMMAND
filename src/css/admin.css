@@ -2868,7 +2868,8 @@ mark.tpl-var-resolved {
 }
 
 .cpsia-aplica-badge--si { background: rgba(232,53,122,0.1); color: var(--e4); }
-.cpsia-aplica-badge--no { background: rgba(141,198,63,0.1);  color: var(--e6); }
+.cpsia-aplica-badge--no     { background: rgba(141,198,63,0.1);  color: var(--e6); }
+.cpsia-aplica-badge--manual { background: rgba(245,166,35,0.15); color: var(--e3); font-weight:600; }
 
 .cpsia-test-chip {
   font-family: var(--font-mono);

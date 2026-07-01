@@ -2160,7 +2160,7 @@ function renderCpsiaDetail(container) {
                   <td class="cpsia-td cpsia-td--num">${p.num}</td>
                   <td class="cpsia-td"><span class="cpsia-prod-nombre">${_esc(p.itemName||'')}</span></td>
                   <td class="cpsia-td cpsia-td--materials" style="font-size:11px">${_esc(p.description||'—')}</td>
-                  <td class="cpsia-td"><span class="cpsia-aplica-badge cpsia-aplica-badge--${p.aplica?'si':'no'}">${p.aplica?'⚠️ Sí':p.exento?'✓ Exento':'—'}</span></td>
+                  <td class="cpsia-td"><span class="cpsia-aplica-badge cpsia-aplica-badge--${p.aplica?'si':p.exento?'no':p.regla==='manual'?'manual':'no'}">${p.aplica?'⚠️ Sí':p.exento?'✓ Exento':p.regla==='manual'?'🔍 Revisar':'—'}</span></td>
                   <td class="cpsia-td"><span class="cpsia-test-chip cpsia-test-chip--${p.aplica?'alert':'exempt'}">${_esc(p.test||'')}</span></td>
                   <td class="cpsia-td" style="font-size:11px;color:#888">${_esc(p.articulo||'')}</td>
                 </tr>
