@@ -608,6 +608,55 @@ body.admin {
   margin-bottom: 16px;
 }
 
+/* ── Det-sheet URL field ── */
+.det-sheet-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.det-sheet-input {
+  flex: 1;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: #fafafa;
+  color: #222;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.det-sheet-input:focus { border-color: var(--e3); }
+.det-sheet-save {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--e3);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.det-sheet-save:hover { opacity: 0.85; }
+.det-sheet-hint {
+  font-size: 11px;
+  color: rgba(0,0,0,0.4);
+  margin: 0;
+}
+.det-sheet-status {
+  font-size: 12px;
+  margin-top: 6px;
+  font-weight: 600;
+}
+.det-sheet-status--ok  { color: var(--e6); }
+.det-sheet-status--err { color: var(--e4); }
+
 /* ── Stage stepper ── */
 .stage-stepper {
   display: flex;

@@ -1,8 +1,8 @@
-// api/products-list.js — lee solo los títulos (BOOK TITLE) de un Google Sheet
+// api/products-list.js — lee productos del Google Sheet con código, qty e imagen
 // GET /api/products-list?url=https://docs.google.com/spreadsheets/d/...
 
 const PREVIEW_RE = /^https:\/\/[a-z0-9-]+-kaiacommand-s-projects\.vercel\.app$/
-const ALLOWED    = ['https://kaia.sicoben.com', 'https://kaiacommand-s-projects.vercel.app']
+const ALLOWED    = ['https://kaia.sicoben.com', 'https://kaiacommand.vercel.app', 'https://kaiacommand-s-projects.vercel.app']
 
 function parseCSVFull(text) {
   const records = []
@@ -65,20 +65,37 @@ export default async function handler(req, res) {
   }
 
   const headers = records[headerIdx].map(h => h.toUpperCase())
-  const findCol = (...kw) => { for (const k of kw) { const i = headers.findIndex(h => h.includes(k)); if (i !== -1) return i } return -1 }
-  const colName = findCol('BOOK TITLE', 'ITEM NAME', 'TITLE', 'NOMBRE', 'NAME')
+  const findCol = (...kw) => { for (const k of kw) { const i = headers.findIndex(h => h.includes(k.toUpperCase())); if (i !== -1) return i } return -1 }
+
+  const colName   = findCol('BOOK TITLE', 'ITEM NAME', 'TITLE', 'NOMBRE', 'NAME')
+  const colCode   = findCol('ITEM CODE', 'CODE', 'SKU', 'REF', 'CODIGO', 'COD')
+  const colQty    = findCol('QTY TOTAL', 'QTY PER TITLE', 'QTY', 'QUANTITY', 'CANTIDAD', 'UNITS')
+  const colImg    = findCol('IMAGE', 'IMAGEN', 'IMG', 'PHOTO', 'PICTURE', 'FOTO')
+  const colFormat = findCol('FORMAT', 'FORMATO', 'GROUP', 'GRUPO', 'TYPE', 'TIPO')
 
   if (colName < 0) return res.status(200).json({ products: [] })
 
-  // Extraer solo los títulos únicos, ignorar filas vacías o que sean solo specs
-  const seen = new Set()
+  const seen     = new Set()
   const products = []
 
   for (const row of records.slice(headerIdx + 1)) {
     const name = (row[colName] || '').trim()
     if (!name || /^\d+$/.test(name) || seen.has(name)) continue
     seen.add(name)
-    products.push(name)
+
+    const code   = colCode   >= 0 ? (row[colCode]   || '').trim() : ''
+    const qty    = colQty    >= 0 ? (row[colQty]    || '').trim() : ''
+    const format = colFormat >= 0 ? (row[colFormat] || '').trim() : ''
+
+    // Imagen: si la celda contiene una URL válida o fórmula IMAGE("url")
+    let imageUrl = ''
+    if (colImg >= 0) {
+      const raw = (row[colImg] || '').trim()
+      const urlMatch = raw.match(/https?:\/\/[^\s"')]+/)
+      if (urlMatch) imageUrl = urlMatch[0]
+    }
+
+    products.push({ itemName: name, code, qty, imageUrl, format })
   }
 
   return res.status(200).json({ products, total: products.length })

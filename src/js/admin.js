@@ -496,6 +496,19 @@ function renderDetalle(ccs) {
     <!-- Carencias -->
     ${renderCarencias(c.ccs, c.etapa_idx)}
 
+    <!-- Google Sheet link -->
+    <div class="detalle-card">
+      <p class="detalle-card-label">Google Sheet · Productos</p>
+      <div class="det-sheet-row">
+        <input class="det-sheet-input" id="detSheetUrl" type="url"
+               placeholder="https://docs.google.com/spreadsheets/d/…"
+               value="${c.sheet_url ? c.sheet_url.replace(/"/g,'&quot;') : ''}" />
+        <button class="det-sheet-save" id="detSheetSave">Guardar</button>
+      </div>
+      <p class="det-sheet-hint">Este link permite mostrar la lista de productos en el Portal de Colaboradores.</p>
+      <p class="det-sheet-status" id="detSheetStatus" hidden></p>
+    </div>
+
     <!-- Timeline -->
     <div class="detalle-card" id="timelineContainer">
       <p class="detalle-card-label">Historial de eventos</p>
@@ -506,6 +519,32 @@ function renderDetalle(ccs) {
   // Back button
   document.getElementById('btnBack').addEventListener('click', () => {
     navigate('cargas')
+  })
+
+  // Save sheet URL
+  document.getElementById('detSheetSave').addEventListener('click', async () => {
+    const urlVal   = document.getElementById('detSheetUrl').value.trim()
+    const statusEl = document.getElementById('detSheetStatus')
+    statusEl.hidden = true
+    if (supabase) {
+      const { error } = await supabase.from('cargas').update({ sheet_url: urlVal || null }).eq('ccs', ccs)
+      if (error) {
+        statusEl.textContent = '✗ ' + error.message
+        statusEl.className = 'det-sheet-status det-sheet-status--err'
+      } else {
+        const idx = MOCK_CARGAS.findIndex(x => x.ccs === ccs)
+        if (idx >= 0) MOCK_CARGAS[idx].sheet_url = urlVal || null
+        statusEl.textContent = '✓ Guardado'
+        statusEl.className = 'det-sheet-status det-sheet-status--ok'
+      }
+    } else {
+      statusEl.textContent = '✓ Guardado (demo)'
+      statusEl.className = 'det-sheet-status det-sheet-status--ok'
+      const idx = MOCK_CARGAS.findIndex(x => x.ccs === ccs)
+      if (idx >= 0) MOCK_CARGAS[idx].sheet_url = urlVal || null
+    }
+    statusEl.hidden = false
+    setTimeout(() => { statusEl.hidden = true }, 2500)
   })
 
   // Timeline filter tabs

@@ -124,6 +124,20 @@ CREATE TABLE IF NOT EXISTS destinatarios_masivo (
   activo    boolean DEFAULT true
 );
 
+-- ── Análisis CPSIA guardados ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS cpsia_analisis (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  ccs         text NOT NULL,
+  nombre      text NOT NULL,
+  sheet_url   text,
+  total       integer NOT NULL DEFAULT 0,
+  flagged     integer NOT NULL DEFAULT 0,
+  exentos     integer NOT NULL DEFAULT 0,
+  productos   jsonb NOT NULL DEFAULT '[]',
+  notificada  boolean DEFAULT false,
+  creado_en   timestamptz DEFAULT now()
+);
+
 -- ── Índices para consultas frecuentes ───────────────────────────
 CREATE INDEX IF NOT EXISTS idx_historial_ccs         ON historial_eventos(ccs);
 CREATE INDEX IF NOT EXISTS idx_historial_tipo        ON historial_eventos(tipo);

@@ -67,7 +67,7 @@ async function initPortal() {
       // Cargar cargas reales
       const { data: cargas } = await supabase
         .from('cargas')
-        .select('ccs, nombre, origen, tipo_embarque, etapa_idx, eta, activa')
+        .select('ccs, nombre, origen, tipo_embarque, etapa_idx, eta, activa, sheet_url')
         .eq('activa', true)
         .order('semaforo')
 
@@ -81,11 +81,11 @@ async function initPortal() {
           eta:          c.eta || 'Por confirmar',
           dias_eta:     90,
           responsable:  'Yonaida',
-          sheet_url:    null,
+          sheet_url:    c.sheet_url || null,
         }))
       }
 
-      // Cargar sheet_url de análisis CPSIA guardados
+      // Cargar sheet_url de análisis CPSIA guardados (fallback si cargas.sheet_url está vacío)
       const { data: analisis } = await supabase
         .from('cpsia_analisis')
         .select('ccs, sheet_url, productos')
@@ -97,12 +97,18 @@ async function initPortal() {
         analisis.forEach(a => {
           sheetMap[a.ccs] = a.sheet_url
           if (a.productos?.length) {
-            prodMap[a.ccs] = a.productos.map(p => p.itemName).filter(Boolean)
+            prodMap[a.ccs] = a.productos.map(p => ({
+              itemName: p.itemName || '',
+              code:     p.code     || '',
+              qty:      p.qty      ? String(p.qty) : '',
+              imageUrl: p.imageUrl || '',
+              format:   p.format   || '',
+            })).filter(p => p.itemName)
           }
         })
         PORTAL_CARGAS.forEach(c => {
-          if (sheetMap[c.ccs]) c.sheet_url = sheetMap[c.ccs]
-          if (prodMap[c.ccs])  productosCache[c.ccs] = prodMap[c.ccs]
+          if (!c.sheet_url && sheetMap[c.ccs]) c.sheet_url = sheetMap[c.ccs]
+          if (prodMap[c.ccs]) productosCache[c.ccs] = prodMap[c.ccs]
         })
       }
     } catch (e) {
@@ -144,51 +150,51 @@ function etaLabel(dias) {
 
 /* ── Tarjeta de carga ── */
 function renderLoadCard(c) {
-  const etapa      = ETAPAS[c.etapa_idx]
-  const eta        = etaLabel(c.dias_eta)
-  const hasSheet   = c.etapa_idx >= 2 && c.sheet_url
-  const hasCached  = !!productosCache[c.ccs]
+  const etapa     = ETAPAS[c.etapa_idx]
+  const eta       = etaLabel(c.dias_eta)
+  const showProds = c.etapa_idx >= 2   // E3 Proforma en adelante
+  const hasCached = !!productosCache[c.ccs]
 
   return `
     <div class="load-card" data-ccs="${c.ccs}">
 
       <div class="load-card-header">
-        <span class="load-ccs">${c.ccs}</span>
+        <span class="load-ccs">${esc(c.ccs)}</span>
         <div class="load-header-chips">
-          <span class="load-tipo-chip">${c.tipo}</span>
+          <span class="load-tipo-chip">${esc(c.tipo)}</span>
           <span class="load-etapa-chip" style="--c:${etapa.color}">${etapa.id} · ${etapa.nombre}</span>
         </div>
       </div>
 
-      <h3 class="load-nombre">${c.nombre}</h3>
+      <h3 class="load-nombre">${esc(c.nombre)}</h3>
 
       <div class="load-meta">
-        <span class="load-origen">${c.origen}</span>
+        <span class="load-origen">${esc(c.origen)}</span>
         <span class="load-responsable">
-          <span class="load-resp-avatar">${c.responsable.charAt(0)}</span>
-          ${c.responsable}
+          <span class="load-resp-avatar">${esc(c.responsable.charAt(0))}</span>
+          ${esc(c.responsable)}
         </span>
       </div>
 
       <div class="load-pills">
         <span class="load-pill ${eta.cls}">
-          ⏱ ${eta.text} · ETA ${c.eta}
+          ⏱ ${eta.text} · ETA ${esc(c.eta)}
         </span>
       </div>
 
       ${renderTracker(c.etapa_idx)}
 
-      ${hasSheet || hasCached ? `
+      ${showProds ? `
         <div class="load-productos-section">
           <button class="load-productos-toggle" data-ccs="${esc(c.ccs)}"
                   data-sheet="${esc(c.sheet_url || '')}">
             <span class="load-productos-arrow">▸</span>
             <span class="load-productos-label">
-              ${hasCached ? `Ver productos (${productosCache[c.ccs].length})` : 'Ver productos'}
+              ${hasCached ? `Ver productos (${productosCache[c.ccs].length})` : 'Ver productos de esta carga'}
             </span>
           </button>
           <div class="load-productos-list" id="prod-${esc(c.ccs)}" hidden>
-            ${hasCached ? renderProductList(productosCache[c.ccs]) : '<p class="load-prod-loading">Cargando...</p>'}
+            ${hasCached ? renderProductList(productosCache[c.ccs]) : ''}
           </div>
         </div>
       ` : ''}
@@ -196,11 +202,31 @@ function renderLoadCard(c) {
   `
 }
 
-function renderProductList(titles) {
-  if (!titles?.length) return '<p class="load-prod-empty">Sin títulos registrados.</p>'
-  return `<ol class="load-prod-ol">
-    ${titles.map(t => `<li class="load-prod-item">${esc(t)}</li>`).join('')}
-  </ol>`
+function renderProductList(products) {
+  if (!products?.length) return '<p class="load-prod-empty">Sin productos registrados.</p>'
+  return `<div class="prod-grid">
+    ${products.map(p => {
+      const item = typeof p === 'string' ? { itemName: p, code: '', qty: '', imageUrl: '', format: '' } : p
+      const img  = item.imageUrl
+        ? `<img class="prod-card-img" src="${esc(item.imageUrl)}" alt="${esc(item.itemName)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+        : ''
+      const placeholder = `<div class="prod-card-img-ph" ${item.imageUrl ? 'style="display:none"' : ''}>📚</div>`
+      return `
+        <div class="prod-card">
+          <div class="prod-card-visual">
+            ${img}${placeholder}
+          </div>
+          <div class="prod-card-info">
+            <p class="prod-card-name">${esc(item.itemName)}</p>
+            ${item.format ? `<span class="prod-card-format">${esc(item.format)}</span>` : ''}
+            <div class="prod-card-meta">
+              ${item.code ? `<span class="prod-card-code">📋 ${esc(item.code)}</span>` : ''}
+              ${item.qty  ? `<span class="prod-card-qty">📦 ${esc(item.qty)} uds</span>` : ''}
+            </div>
+          </div>
+        </div>`
+    }).join('')}
+  </div>`
 }
 
 /* ── Portal render ── */
@@ -255,7 +281,12 @@ async function toggleProductos(btn) {
     return
   }
 
-  listEl.innerHTML = '<p class="load-prod-loading">⏳ Cargando títulos...</p>'
+  if (!sheetUrl) {
+    listEl.innerHTML = '<p class="load-prod-empty">📋 Proforma aún no vinculada a esta carga.<br>Consulta a Paulet para más información.</p>'
+    return
+  }
+
+  listEl.innerHTML = '<p class="load-prod-loading">⏳ Cargando productos...</p>'
   try {
     const res  = await fetch(`/api/products-list?url=${encodeURIComponent(sheetUrl)}`)
     const data = await res.json()
@@ -264,10 +295,10 @@ async function toggleProductos(btn) {
       listEl.innerHTML = renderProductList(data.products)
       label.textContent = `Ver productos (${data.products.length})`
     } else {
-      listEl.innerHTML = '<p class="load-prod-empty">No se encontraron títulos.</p>'
+      listEl.innerHTML = '<p class="load-prod-empty">No se encontraron productos en el sheet.</p>'
     }
   } catch {
-    listEl.innerHTML = '<p class="load-prod-empty">Error al cargar.</p>'
+    listEl.innerHTML = '<p class="load-prod-empty">Error al cargar el sheet.</p>'
   }
 }
 
